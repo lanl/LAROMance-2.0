@@ -40,10 +40,10 @@ All input and output entries hold **NumPy arrays or Python lists** of the same l
 >     "data": {
 >         42: {                           # simulation #42
 >             "temperature": np.array([...]),
->             "strain_rate": np.array([...]),
+>             "stress": np.array([...]),
 >             "U": {
->                 "stress": np.array([...]),
->                 "creep_strain": np.array([...])
+>                 "dislocation_density_rate": np.array([...]),
+>                 "strain_rate": np.array([...])
 >             }
 >         },
 >         43: { … }                       # next simulation
