@@ -59,7 +59,7 @@ tail -n +2 "$input_file" | while IFS=, read -r TEMP VMJ2 RHOC; do
     rhoc=$RHOC
 
     # replace the placeholders in the .sx file
-    sed -i "s/RHOC_PLACE/$rhoc/g" "$newdir/Tungsten_fine.sx"
+    sed -i "s/RHOC_PLACE/$rhoc/g" "$newdir/single_crystal_model.sx"
 done
 
 # Conditionally call autojob
