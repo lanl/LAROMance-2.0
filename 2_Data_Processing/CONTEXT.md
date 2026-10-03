@@ -1,37 +1,9 @@
 # 2 – Data Processing
 This step loads the raw physics‑based dataset (generated in step 1) of individual time history traces, curates it by downsampling, optionally augments data with extra points (e.g., where data is sparse). 
 
-## Data Format Expected by Workflow
-Originaly data should be in the form of a .pickle file. Each pickle file contains a dictionary with "data", containing keys in the form of integers. The integers represent the simulation identity number. Within each simulation ID, inputs are stored separately in variable-keys, as well a nested dictionary "U", containing output key-variable pairs. Each input or output key contains arrays with numpy arrays or lists.
-
-**Visual representation of the data structure**
-
-```text
-pickle_file
-│
-└── dict
-    ├── "data" : {
-    │   ├── <sim_id_1> : {
-    │   │   ├── input_key_1 : np.ndarray / list
-    │   │   ├── input_key_2 : np.ndarray / list
-    │   │   └── "U" : {
-    │   │         ├── output_key_A : np.ndarray / list
-    │   │         ├── output_key_B : np.ndarray / list
-    │   │         └── ...
-    │   │   }
-    │   ├── <sim_id_2> : { ... }
-    │   └── <sim_id_N> : { ... }
-    │   }
-    └── "meta_data" : {
-        ├── "sim_lengths" : { <sim_id_1>: int, <sim_id_2>: int, ... }
-        │   # A list (or dict) of integers representing the number of increments (time steps) for each simulation.
-        ├── "job_number" : { <sim_id_1>: int, <sim_id_2>: int, ... }
-        │   # Optional mapping of simulation IDs to their originating job numbers.
-        └── ... other metadata collections as needed (e.g., timestamps, flags).
-        # The meta_data structure stores auxiliary per‑simulation information; currently the
-        # most important field is "sim_lengths", which lists the length of each simulation.
-    }
-```
+## Accepted input format
+The pipeline reads a single **`.pickle`** file.  
+Inside the pickle there is a top‑level dictionary.
 
 * The top‑level dictionary now contains two primary keys:
   * **"data"** – the simulation data as described previously.
@@ -41,14 +13,55 @@ pickle_file
 * Input keys are stored directly under the simulation dictionary.
 * Outputs are grouped under the nested dictionary `"U"`.
 * All values are NumPy arrays (or Python lists) representing time‑history data.
+  
+This *data* dictionary maps **simulation IDs** (integers) to the data for each run:
 
-For Training, the data arrays should be concatenated: all individual simualations assembled into long arrays. This will be handled by executing this stage.
+```text
+{
+    "data": {
+        0: { … },
+        1: { … },
+        2: { … },
+        …
+    }
+}
+```
+
+* **Simulation ID (int)** – uniquely identifies a single simulation instance.  
+* For each ID, the dictionary contains:
+  * **Input variables** – stored directly under descriptive keys (e.g., `"temperature"`, `"strain_rate"`).  
+  * **Outputs** – grouped under a nested dictionary **`"U"`**. The keys inside **`U`** are the output variable names (e.g., `"stress"`, `"creep_strain"`).
+
+All input and output entries hold **NumPy arrays or Python lists** of the same length, representing the time‑series or sample points for that variable.
+
+> **Example (simplified)**  
+> ```python
+> {
+>     "data": {
+>         42: {                           # simulation #42
+>             "temperature": np.array([...]),
+>             "strain_rate": np.array([...]),
+>             "U": {
+>                 "stress": np.array([...]),
+>                 "creep_strain": np.array([...])
+>             }
+>         },
+>         43: { … }                       # next simulation
+>     }
+> }
+> ```
+
+In short, the pickle must contain a single dict with a `"data"` entry, where each integer key maps to a dictionary of **input‑variable arrays** plus a sub‑dictionary **`"U"`** that holds the **output‑variable arrays**. This uniform layout allows the subsequent stages of the workflow to reliably extract inputs, generate designs of experiments, and train surrogate models.
+
+
+## Training Format
+For Training, the data arrays should be concatenated: all individual simualations assembled into long arrays. This will be handled by executing this stage's python script.
 
 This stage then stores the curated version ready for surrogate‑model training or for testing. This stage can be re-used for both Training and Testing. Training requires concatenation, and testing does not.
 
 Plots are generated to visualize the data with scatter plots and line plots.
 
-## What the script does
+## What the Python script does
 1. Loads a pickle file containing the original dataset. Make sure the data file is located in `./references` of this Stage.
 2. Curates the dataset by down‑sampling to a manageable size.  
 3. Optionally, augmentation techniques can be applied to enrich the curated dataset, such as:
