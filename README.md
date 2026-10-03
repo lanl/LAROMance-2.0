@@ -41,11 +41,8 @@ pip install \
     scipy \
     pandas \
     pyDOE2 \
-    tqdm
-
-# 4. (Optional) Install the fast spatial‑index library
-#    Required only if you want R‑tree acceleration in high‑dimensional meshes.
-pip install rtree
+    tqdm \
+    rtree
 ```
 
 ## Stages and Folder Structure
