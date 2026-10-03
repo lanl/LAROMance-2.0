@@ -16,7 +16,7 @@ Welcome to the **LAROMance 2.0** codebase: an end‑to‑end, modular pipeline
 
 ## Installation
 
-The project is written in Python (≥ 3.6).  The easiest way to get a clean,
+The project is written in Python (≥ 3.10).  The easiest way to get a clean,
 reproducible environment is to use a virtual environment.
 
 ```bash
@@ -25,7 +25,7 @@ git clone https://github.com/lanl/LAROMance-2.0.git
 cd LAROMance-2.0
 
 # 2. Create and activate a virtual environment (recommended)
-conda create -n laromance python=3.9 -y   # you can choose any 3.6+ version
+conda create -n laromance python=3.10 -y   # you can choose any 3.10+ version
 conda activate laromance                 # ← switch into the env
 
 #  Upgrade pip (optional but recommended)
@@ -41,7 +41,8 @@ pip install \
     pandas \
     pyDOE2 \
     tqdm \
-    rtree
+    rtree \
+    scikit-learn
 ```
 
 ## Stages and Folder Structure
