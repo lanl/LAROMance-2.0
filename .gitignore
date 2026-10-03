@@ -1,0 +1,4 @@
+.vscode
+train_output.pickle
+__pycache__
+.DS_Store

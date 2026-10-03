@@ -1,11 +1,11 @@
-## LAROMance 2.0 – Fast, Flexible Surrogate Modeling for Nonlinear Constitutive Equations
+## LAROMance 2.0 – Fast, Flexible, Surrogate Modeling Workflow for Nonlinear Constitutive Equations
 Release O# O5190  
 Date: October 3rd 2026  
 Author: Andre Ruybalid | andreruybalid@gmail.com  
 
 ---
 
-Welcome to the **LAROMance 2.0** codebase: an end‑to‑end, modular pipeline that **generates**, **cleans**, and **augments** high‑dimensional, nonlinear time‑series data, then builds **ultra‑fast surrogate models** to capture complex multi‑variable relationships. Although this workflow, which was developed at Los Alamos National Laboratory, is not restricted to any particular simulation framework, it was originally developed for creep modeling in **MOOSE** and **BISON**, supporting nuclear‑fuel‑system performance analysis [1, 2]. By compressing heavyweight high‑fidelity simulations into lightning‑quick surrogates, LAROMance delivers turnkey material‑behavior predictions for safety‑critical scenarios (nuclear accidents, aerospace loading, etc.) with **~1000× speed‑ups**. The repo ships with exemplary synthetic datasets, located in `./examples/`, and a ready‑to‑run training GUI.
+Welcome to the **LAROMance 2.0** codebase: an end‑to‑end, modular pipeline that **generates**, **cleans**, and **augments** high‑dimensional, nonlinear time‑series data, then builds **ultra‑fast surrogate models** to capture complex multi‑variable relationships. Although this workflow, which was developed at Los Alamos National Laboratory, is not restricted to any particular simulation framework, it was originally developed for creep modeling in **MOOSE** and **BISON**, supporting nuclear‑fuel‑system performance analysis [1, 2]. By compressing heavyweight high‑fidelity simulations into quick surrogates, LAROMance delivers turnkey material‑behavior predictions for safety‑critical scenarios (nuclear accidents, aerospace loading, etc.) with **~1000× speed‑ups**. The repo ships with exemplary synthetic datasets, located in `./examples/`, and a ready‑to‑run training GUI.
 
 [1] A.P. Ruybalid *et al.*, *Ann. Nucl. Energy* **2026**, [DOI:10.1016/j.anucene.2026.112681](https://doi.org/10.1016/j.anucene.2026.112681)  
 [2] A.P. Ruybalid *et al.*, *Integr. Mater. Manuf. Innov.* **2024**, [DOI:10.1007/S40192-024-00377‑Z](https://doi.org/10.1007/S40192-024-00377-Z/FIGURES/13)
