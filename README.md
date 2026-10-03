@@ -50,17 +50,26 @@ The framework is split into four self‑contained stages—each in its own folde
 
 Follow the numbered folder structure to build a surrogate from scratch. You will need a data generation model first in order to build your database (no generation model is here provided). Example data is located in the `./examples` folder.
 
-Every stage ships a `CONTEXT.md` that details the stage's workflow, scripts, and usage, so you can jump in at any point and run a complete sub‑pipeline.
+Every stage ships a `CONTEXT.md` that details the stage's workflow, scripts, and usage, so you can jump in at any point and run a complete sub‑pipeline. The workflow follows a nexted, numbered folder structure, which form consecutive stages to complete the surrogate building process. The folder structure, with self-explanatory naming, and what each stage and sub-step does, is overviewed as follows:
 
-- **1_Data_Generation** – Generate data using, e.g., High-Fidelity Polycrystal Modeling (but any data generator can be used)
-  - **11_Generation_Model_Summary** - Read model scripts and input deck
-  - **12_Design_of_Experiments** - Use sampling methods of various kinds, including Latin Hypercube Sampling to setup the simulation batch. Parameter space configuration.
-  - **13_Batch_Template_Setup** -  Setup the template folder, HPC bash script for parameter injection, and the launch (SLURM) scripts that can be copied to the HPC.
-- **2_Data_Processing** - Process the data from step 1, including curation, filtering, augmentation, and plotting.
-- **3_Surrogate_Modeling** – Constructing, training and testing a surrogate model on the data.
-  - **31_Surrogate_Training** – Construct and train the surrogate model, using the Graphical User Interface for training. Plot training diagnostics/metrics.
-  - **32_Surrogate_Testing** – Evaluate the surrogate on (preferable unseen) test data. Plot testing metrics.
- - **4_Port_Moose** – Export the surrogate to a MOOSE material model. This stage was originally written for the MOOSE/BISON creep‑modeling workflow, but the export utilities are modular and can be retargeted to any FEM or physics‑solver by swapping the template files and adjusting a small wrapper script. Adapting the workflow for a new solver will typically involve adding new helper functions (or classes) to `utils/sm_publish.py` that generate the appropriate input files for the target code. 
+```text
+LAROMance-2.0
+|
+├─ 1_Data_Generation            – Generate data (e.g., High‑Fidelity Polycrystal Modeling)
+│   ├─ 11_Generation_Model_Summary   – Read model scripts and input decks
+│   ├─ 12_Design_of_Experiments       – Latin Hypercube Sampling (or your own) and configure the parameter space
+│   └─ 13_Batch_Template_Setup       – Create the template folder, HPC‑bash injection script, and SLURM launch scripts ready for copy‑‑paste to the cluster
+|
+├─ 2_Data_Processing              – Curate, filter, augment, and visualise the data from step 1
+|
+├─ 3_Surrogate_Modeling            – Build, train, and test a fast surrogate model
+│   ├─ 31_Surrogate_Training          – Use the GUI to train the model; produce training diagnostics/metrics
+│   └─ 32_Surrogate_Testing           – Evaluate on (preferably unseen) test data; plot testing metrics
+|
+└─ 4_Port_Moose                    – Export the trained surrogate as a MOOSE material model
+
+   *The utilities are modular; to retarget another FEM/physics solver, replace the template files and add a small wrapper (e.g., new helper functions or classes in `utils/sm_publish.py`) that writes the appropriate input files for the target code.
+```
 
 Each folder contains a `CONTEXT.md` that explains the purpose of the step and how to run the associated script(s). And each step in itself may be a workflow on its own, with its own subfolders and `CONTEXT.md` files.
 
@@ -83,8 +92,6 @@ stage of the pipeline.  Detailed usage instructions are provided in the
   > Tip: run the full pipeline on the creep example (5 k sims) to see everything in action
 * **Training‑Module practice data** – Found in [examples/Training_Module](examples/Training_Module).  This folder contains small synthetic datasets meant solely for exploring the GUI of the training module (step 3.1).  See its README for more info.
 * There is currently no dummy data generator model for stage **1-Data Generation** for testing or as example. 
-
-
 
 
 ## Limitations
