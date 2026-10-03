@@ -1,0 +1,66 @@
+{
+  "input_vars": [
+    {
+      "key": "x1",
+      "elem": "6",
+      "tri": false,
+      "plot": true,
+      "map": "minmax"
+    },
+    {
+      "key": "x2",
+      "elem": "6",
+      "tri": false,
+      "plot": true,
+      "map": "minmax"
+    }
+  ],
+  "output_vars": [
+    {
+      "key": "u",
+      "plot": true,
+      "map": "minmax"
+    }
+  ],
+  "plot_2d_mode": false,
+  "args": {
+    "data_file": "./references/1D_Dummy_data.pickle",
+    "output_directory": "./output",
+    "map_output": {
+      "u": {
+        "minmax": {
+          "range": [
+            -1.0,
+            1.0
+          ]
+        }
+      }
+    },
+    "map_input": {
+      "x1": {
+        "minmax": {
+          "range": [
+            -1.0,
+            1.0
+          ]
+        }
+      },
+      "x2": {
+        "minmax": {
+          "range": [
+            -1.0,
+            1.0
+          ]
+        }
+      }
+    },
+    "deconcat": false,
+    "plot_histograms": false,
+    "debug": false,
+    "remove_sparse_elements": true,
+    "sparse": true,
+    "constrain_regression": {
+      "u": null
+    }
+  }
+}

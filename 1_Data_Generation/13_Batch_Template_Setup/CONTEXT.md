@@ -1,0 +1,2 @@
+# 1.3 - Batch Template Setup
+Manual step: use this folder to prep the template run folder, alongside the batch run folder generation script. Set it up in the `./output` folder, then copy and launch on the HPC.

@@ -1,0 +1,178 @@
+{
+  "input_vars": [
+    {
+      "key": "vmJ2",
+      "elem": "3",
+      "tri": false,
+      "plot": true,
+      "map": "minmax"
+    },
+    {
+      "key": "temperature",
+      "elem": "3",
+      "tri": false,
+      "plot": true,
+      "map": "minmax"
+    },
+    {
+      "key": "evm",
+      "elem": "[0.0, 1e-8, 1e-5, 1e-3, 0.2]",
+      "tri": false,
+      "plot": false,
+      "map": "log10"
+    },
+    {
+      "key": "rhoc",
+      "elem": "1",
+      "tri": false,
+      "plot": false,
+      "map": "minmax"
+    },
+    {
+      "key": "rhow",
+      "elem": "1",
+      "tri": false,
+      "plot": false,
+      "map": "minmax"
+    },
+    {
+      "key": "dloops_density_values",
+      "elem": "1",
+      "tri": false,
+      "plot": false,
+      "map": "minmax"
+    },
+    {
+      "key": "dloops_size_values",
+      "elem": "1",
+      "tri": false,
+      "plot": false,
+      "map": "minmax"
+    },
+    {
+      "key": "bd_density_values",
+      "elem": "1",
+      "tri": false,
+      "plot": false,
+      "map": "minmax"
+    }
+  ],
+  "output_vars": [
+    {
+      "key": "evm",
+      "plot": true,
+      "map": "log10"
+    },
+    {
+      "key": "rhoc",
+      "plot": false,
+      "map": "symlog"
+    },
+    {
+      "key": "rhow",
+      "plot": false,
+      "map": "symlog"
+    }
+  ],
+  "plot_2d_mode": false,
+  "args": {
+    "data_file": "./references/*.pickle",
+    "map_output": {
+      "evm": {
+        "log10": {
+          "factor": null,
+          "lowerbound": 0.0,
+          "upperbound": 1.0
+        }
+      },
+      "rhoc": {
+        "symlog": {
+          "lowerbound": -1.0,
+          "upperbound": 1.0
+        }
+      },
+      "rhow": {
+        "symlog": {
+          "lowerbound": -1.0,
+          "upperbound": 1.0
+        }
+      }
+    },
+    "output_directory": "../sm_workdir/output/GUIDemo",
+    "map_input": {
+      "vmJ2": {
+        "minmax": {
+          "range": [
+            -1.0,
+            1.0
+          ]
+        }
+      },
+      "temperature": {
+        "minmax": {
+          "range": [
+            -1.0,
+            1.0
+          ]
+        }
+      },
+      "evm": {
+        "log10": {
+          "factor": null,
+          "lowerbound": 0.0,
+          "upperbound": 1.0
+        }
+      },
+      "rhoc": {
+        "minmax": {
+          "range": [
+            -1.0,
+            1.0
+          ]
+        }
+      },
+      "rhow": {
+        "minmax": {
+          "range": [
+            -1.0,
+            1.0
+          ]
+        }
+      },
+      "dloops_density_values": {
+        "minmax": {
+          "range": [
+            -1.0,
+            1.0
+          ]
+        }
+      },
+      "dloops_size_values": {
+        "minmax": {
+          "range": [
+            -1.0,
+            1.0
+          ]
+        }
+      },
+      "bd_density_values": {
+        "minmax": {
+          "range": [
+            -1.0,
+            1.0
+          ]
+        }
+      }
+    },
+    "deconcat": false,
+    "plot_histograms": false,
+    "debug": false,
+    "remove_sparse_elements": true,
+    "sparse": true,
+    "constrain_regression": {
+      "evm": null,
+      "rhoc": null,
+      "rhow": null
+    }
+  }
+}
