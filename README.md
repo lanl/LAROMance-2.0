@@ -71,8 +71,6 @@ LAROMance-2.0
    *The utilities are modular; to retarget another FEM/physics solver, replace the template files and add a small wrapper (e.g., new helper functions or classes in `utils/sm_publish.py`) that writes the appropriate input files for the target code.
 ```
 
-Each folder contains a `CONTEXT.md` that explains the purpose of the step and how to run the associated script(s). And each step in itself may be a workflow on its own, with its own subfolders and `CONTEXT.md` files.
-
 ## How to Use
 The process is modular, so the user can step into any stage, provided data from previous stage is already available.
 1. Start with any stage and follow the `CONTEXT.md` file within each step's folder.

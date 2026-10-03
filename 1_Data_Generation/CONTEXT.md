@@ -9,3 +9,5 @@ This stage consists of three steps:
 - 13_Batch_Template_Setup: This is a manual process the user should take care in setting up. A template run folder is created with the model files and placeholder value, together with the SLURM script to create a batch of simulation run folders on the HPC, using the template folder here created.
 
 The simulation outputs should be collected in the .pickle file needed by step **2 - Data Processing**.
+
+*LAROMance does not ship with a data generation model. Data should simply be in a specific format as explained in 2_Data_Processing/CONTEXT.md*
