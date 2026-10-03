@@ -1,7 +1,8 @@
 ## LAROMance 2.0 – Fast, Flexible, Surrogate Modeling Workflow for Nonlinear Constitutive Equations
-Release O# O5190  
+*Release O# O5190  
 Date: October 3rd 2026  
-Author: Andre Ruybalid | andreruybalid@gmail.com  
+Developers: Andre Ruybalid, Laurent Capolungo  (Los Alamos National Laboratory | New Mexico, USA)  
+Author: Andre Ruybalid | andreruybalid@gmail.com*
 
 ---
 
