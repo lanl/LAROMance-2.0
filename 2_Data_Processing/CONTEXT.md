@@ -37,7 +37,7 @@ The surrogate has a grid-based architecture, with its parameter space aligning w
 
 In short, the pickle must contain a dict with a `"data"` entry, where each integer key maps to a dictionary of **input‑variable arrays** plus a sub‑dictionary **`"U"`** that holds the **output‑variable arrays**. This uniform layout allows the subsequent stages of the workflow to reliably extract inputs, generate designs of experiments, and train surrogate models. Furthermore, a `"meta_data"` entry is optional, but can be convenient for tracking information about simulation runs, e.g., the number of time-steps recorded, or the number of simulations ID's that contained no data.
 
-The best example of the expected data format can be found in [examples/Viscoplasicity_Creep](../examples/Viscoplasicity_Creep/).
+The best and most realistic example of the expected data format can be found in [examples/Viscoplasicity_Creep](../examples/Viscoplasicity_Creep/).
 
 ## Training Format
 For Training, the data arrays should be concatenated: all individual simualations assembled into long arrays. This will be handled by executing this stage's python script.
