@@ -67,6 +67,8 @@ LAROMance-2.0
 │   └─ 32_Surrogate_Testing           – Evaluate on (preferably unseen) test data; plot testing metrics
 |
 └─ 4_Port_Moose                    – Export the trained surrogate as a MOOSE material model
+│   ├─ 41_Export_Model             – Uses a MOOSE material file template to fill with the surrogate parameters, and generates a benchmark file with inputs/outputs to test the eventual MOOSE model outputs against.
+│   └─ 42_Analyze_Benchmark_Test   – Manual step: run the MOOSE verification test with the benchmark file (outside of this workflow) and then analyze/plot some results. The difference between benchmark and MOOSE output should approach machine-precision.
 
    *The utilities are modular; to retarget another FEM/physics solver, replace the template files and add a small wrapper (e.g., new helper functions or classes in `utils/sm_publish.py`) that writes the appropriate input files for the target code.
 ```
