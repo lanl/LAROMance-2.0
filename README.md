@@ -79,6 +79,8 @@ The process is modular, so the user can step into any stage, provided data from 
    1. To stay structured, after every step, make sure to inspect output file saved in the current stage's `output` 
    2. and then **move** the output file from the current step's `output` file to the `references` folder of the next step. Like a product in an assembly line, the objects created during each stage move and transform along the pipeline, each stage's `output` becoming the input (`references`) for the next.
 4. After review and moving of any output, proceed to the next stage or step.
+   
+>Pro-Tip: Keep one copy of the entire tree per material model, started empty and archived once filled, and do not mix files from different models in one pipeline. Use a fresh (empty) copy of the working tree for each new surrogate model. That way, the folder chain becomes the record of the model build.
 
 ## Examples
 
