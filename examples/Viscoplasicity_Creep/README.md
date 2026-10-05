@@ -14,7 +14,6 @@ Viscoplasicity_Creep/
 **Configuration JSON**
 
 The file `Example_Training_Module_Config.json` is a ready‑to‑use configuration that can be fed directly to the **31_Surrogate_Training** GUI (the Training Module) after the raw pickle has been curated with the **02_Data_Processing** step. It defines which variables are treated as inputs (`vmJ2`, `temperature`, `evm`, `rhoc`) and outputs (`evm`, `rhoc`), the discretisation of the `evm` axis (a list of anchor points), mapping options (min‑max, log10, symlog), and several flags used by the training interface (e.g., whether to plot histograms or remove sparse elements). By pointing the `data_file` entry to the curated training pickle (produced in step 2), this JSON enables a quick launch of the surrogate‑training workflow without manual configuration. 
-```
 
 The pickle stores a **Python dictionary** where each key is a *simulation ID*
 (`int` ranging from `1` to `5000`).  The value for each ID is another dictionary
@@ -56,5 +55,7 @@ The processing scripts will:
 After this stage the curated data can be fed straight into the **03_Surrogate_Modeling**
 pipeline to train a surrogate model for the creep strain‑rate and dislocation‑
 density‑rate as functions of `vmJ2` and `temperature`, `evm` (strain), and `rhoc` (dislocation density).
+
+*The example run commands in the stages' CONTEXT.md files throughout the pipeline (starting from step 2) are chosen to work exactly with this dataset*
 
 ---
