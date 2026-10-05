@@ -1,8 +1,7 @@
 # Viscoplastic Creep Example Data
 
 This example package contains a single **pickle** file with the results of
-**5 000** individual creep simulations of an arbitrary (fictional) metal (polycrystal). The file is intended to be used as the
-input for the **02_Data_Processing** stage of the LAROMance pipeline, and can from there be processed through the entire workflow.
+**5 000** individual creep simulations of an arbitrary (fictional) metal (polycrystal). The dataset was generated with a mechanistic crystal‑plasticity solver that operates in the Fourier‑space (FFT‑based) on a representative volume element. The solver models the three main viscoplastic mechanisms **coupled and implicitly** – dislocation **glide**, **climb**, and **vacancy‑mediated diffusion** – to capture the single‑crystal response of the metal. In addition, it tracks the evolving **dislocation density** (stored in the dataset under the key `rhoc`). The file is intended to be used as the input for the **02_Data_Processing** stage of the LAROMance pipeline, and can from there be processed through the entire workflow, to produce the needed MOOSE (FEM solver) material file.
 
 ## File layout
 
