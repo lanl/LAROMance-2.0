@@ -10,7 +10,7 @@ Welcome to the **LAROMance 2.0** codebase: an end‑to‑end, modular pipeline
 
 [1] A.P. Ruybalid *et al.*, *Ann. Nucl. Energy* **2026**, [DOI:10.1016/j.anucene.2026.112681](https://doi.org/10.1016/j.anucene.2026.112681)  
 
-> **Want the math & training details?** Check out `3_Surrogate_Modeling/31_Surrogate_Training/references/LAROMANCE_USER_MANUAL.html` for the full technical training module manual and its info sections.
+ > **Want the math & training details?** Check out [LAROMANCE_USER_MANUAL.pdf](3_Surrogate_Modeling/31_Surrogate_Training/references/LAROMANCE_USER_MANUAL.pdf) for the full technical training module manual and its info sections.
 
 *LAROMance: Los Alamos Reduced Order Model for Advanced Nonlinear Constitutive Equations.*
 
