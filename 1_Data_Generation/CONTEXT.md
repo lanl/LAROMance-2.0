@@ -10,4 +10,4 @@ This stage consists of three steps:
 
 The simulation outputs should be collected in the .pickle file needed by step **2 - Data Processing**.
 
-*LAROMance does not ship with a data generation model. Data should simply be in a specific format as explained in 2_Data_Processing/CONTEXT.md*
+>*LAROMance does not ship with a high-fidelity data-generation model. The user must integrate their own model into this step, ensuring that the data is in a specific format, explained in `../2_Data_Processing/CONTEXT.md`. Published LAROMance models have used VPSC and EVP-FFT crystal plasticity codes to generate data. One example is the open-sourced Los Alamos code "LApx".*

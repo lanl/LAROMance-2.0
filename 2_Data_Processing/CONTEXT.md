@@ -1,7 +1,7 @@
 # 2 – Data Processing
-This step loads the raw physics‑based dataset (generated in step 1) of individual time history traces, curates it by downsampling, optionally augments data with extra points (e.g., where data is sparse). 
+This step loads the raw physics‑based dataset (generated in step 1) of individual time history traces coming from a high-fidelity model. This stage then curates the data by downsampling, cleans, and optionally, augments data with extra points (e.g., where data is sparse). 
 
-> The data `./pickle` file in the `../examples/ViscoPlasticity_Creep` folder is already in the right format. Try exploring it interactively,
+> The example data `./pickle`-file in the `../examples/ViscoPlasticity_Creep` folder is already in the right format. Copy it to the `2_Data_Processing/references` folder and then run the `load_and_plot_data.py` script.
 
 ## Accepted input format
 The pipeline reads a single **`.pickle`** file.  
