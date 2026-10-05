@@ -1,0 +1,106 @@
+{
+  "input_vars": [
+    {
+      "key": "vmJ2",
+      "elem": "10",
+      "tri": false,
+      "plot": true,
+      "map": "minmax"
+    },
+    {
+      "key": "temperature",
+      "elem": "10",
+      "tri": false,
+      "plot": true,
+      "map": "minmax"
+    },
+    {
+      "key": "evm",
+      "elem": "[0.0,1e-14,1e-12,1e-11,1e-10,1e-9,1e-8,1e-7,1e-6,1e-5,1e-4,1e-2,0.2]",
+      "tri": false,
+      "plot": false,
+      "map": "minmax"
+    },
+    {
+      "key": "rhoc",
+      "elem": "1",
+      "tri": false,
+      "plot": false,
+      "map": "log10"
+    }
+  ],
+  "output_vars": [
+    {
+      "key": "evm",
+      "plot": true,
+      "map": "log10"
+    },
+    {
+      "key": "rhoc",
+      "plot": false,
+      "map": "symlog"
+    }
+  ],
+  "plot_2d_mode": false,
+  "args": {
+    "data_file": "/Users/andreruybalid/LAROMance_process/3_Surrogate_Modeling/31_Surrogate_Training/references/Curated_80pct_train_Creep_runs_with_dislocation_density_tracking.pickle",
+    "map_input": {
+      "vmJ2": {
+        "minmax": {
+          "range": [
+            -1.0,
+            1.0
+          ]
+        }
+      },
+      "temperature": {
+        "minmax": {
+          "range": [
+            -1.0,
+            1.0
+          ]
+        }
+      },
+      "evm": {
+        "minmax": {
+          "range": [
+            -1.0,
+            1.0
+          ]
+        }
+      },
+      "rhoc": {
+        "log10": {
+          "factor": null,
+          "lowerbound": 0.0,
+          "upperbound": 1.0
+        }
+      }
+    },
+    "map_output": {
+      "evm": {
+        "log10": {
+          "factor": null,
+          "lowerbound": 0.0,
+          "upperbound": 1.0
+        }
+      },
+      "rhoc": {
+        "symlog": {
+          "lowerbound": -1.0,
+          "upperbound": 1.0
+        }
+      }
+    },
+    "output_directory": "./output",
+    "deconcat": false,
+    "plot_histograms": false,
+    "debug": false,
+    "remove_sparse_elements": true,
+    "sparse": true,
+    "constrain_regression": {
+      "evm": null,
+      "rhoc": null
+    }
+  }
+}

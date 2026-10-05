@@ -4,11 +4,16 @@ This example package contains a single **pickle** file with the results of
 **5 000** individual creep simulations of an arbitrary (fictional) metal (polycrystal). The dataset was generated with a mechanistic crystal‑plasticity solver that operates in the Fourier‑space (FFT‑based) on a representative volume element. The solver models the three main viscoplastic mechanisms **coupled and implicitly** – dislocation **glide**, **climb**, and **vacancy‑mediated diffusion** – to capture the single‑crystal response of the metal. In addition, it tracks the evolving **dislocation density** (stored in the dataset under the key `rhoc`). The file is intended to be used as the input for the **02_Data_Processing** stage of the LAROMance pipeline, and can from there be processed through the entire workflow, to produce the needed MOOSE (FEM solver) material file.
 
 ## File layout
-
 ```
 Viscoplasicity_Creep/
 ├─ README.md                          ← You are reading this file
-└─ Creep_runs_with_dislocation_density_tracking.pickle  ← Pickle containing the simulation data
+├─ Creep_runs_with_dislocation_density_tracking.pickle  ← Pickle containing the simulation data
+└─ Example_Training_Module_Config.json ← Example JSON configuration for the Training Module
+```
+
+**Configuration JSON**
+
+The file `Example_Training_Module_Config.json` is a ready‑to‑use configuration that can be fed directly to the **31_Surrogate_Training** GUI (the Training Module) after the raw pickle has been curated with the **02_Data_Processing** step. It defines which variables are treated as inputs (`vmJ2`, `temperature`, `evm`, `rhoc`) and outputs (`evm`, `rhoc`), the discretisation of the `evm` axis (a list of anchor points), mapping options (min‑max, log10, symlog), and several flags used by the training interface (e.g., whether to plot histograms or remove sparse elements). By pointing the `data_file` entry to the curated training pickle (produced in step 2), this JSON enables a quick launch of the surrogate‑training workflow without manual configuration. 
 ```
 
 The pickle stores a **Python dictionary** where each key is a *simulation ID*
