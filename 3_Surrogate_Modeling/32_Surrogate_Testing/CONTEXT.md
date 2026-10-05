@@ -1,7 +1,7 @@
 # 3.2 - Surrogate Testing
-This stage tests LAROMAnce surrogate, using the curated (and optionally augmented) data set and a graphical user interface.
+This stage tests the LAROMAnce surrogate built by the training step, using a __TEST__ data set (unseen during training) and a graphical user interface Training Module (instruction manual is here [LAROMANCE_USER_MANUAL.pdf](3_Surrogate_Modeling/31_Surrogate_Training/doc/LAROMANCE_USER_MANUAL.pdf)).
 
-It requires a different dataset than for training: one that is not concatenated, but has per-simulation time-histories. The location of this test-data `.pickle` file should be `./references`.
+Proper testing overfitting requires a different dataset than used for training. This unseen dataset should not be concatenated, but should per-simulation time-histories. When the data processor of step `2_Data_Processing` is used for splitting a dataset into a training and testing partition, the this data format should correctly be stored in the respective *testing* pickle (see `.pickle` filename). The location of this test-data `.pickle` file should be `./references`.
 
 For the polycrystal creep modeling for which LAROMance is originally designed, this step runs creep simulations and then compares the surrogate prediction to the ground truth in the data. This is not done on the rate-based outputs, but on the accumulated strains. The error metrics are calculated based on the accumulated strain. Since the surrogate predicts, rates, considering the accumulated strain effectively considers the compounded error across time increments, which is a more stringent method than merely comparing rates directly.
 

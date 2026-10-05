@@ -1,7 +1,7 @@
 # 3.1 - Surrogate Training
 This stage constructs and trains the LAROMAnce surrogate, using the curated (and optionally augmented) data set and a graphical user interface. 
 
-A complete User Manual for the GUI is located in [LAROMANCE_USER_MANUAL.html](3_Surrogate_Modeling/31_Surrogate_Training/doc/LAROMANCE_USER_MANUAL.html).
+A complete User Manual for the GUI is located in [LAROMANCE_USER_MANUAL.pdf](3_Surrogate_Modeling/31_Surrogate_Training/doc/LAROMANCE_USER_MANUAL.pdf).
 
 ## What the script does
 

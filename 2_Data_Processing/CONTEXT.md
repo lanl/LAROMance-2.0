@@ -5,36 +5,18 @@ This step loads the raw physics‑based dataset (generated in step 1) of individ
 
 ## Accepted input format
 The pipeline reads a single **`.pickle`** file.  
+
 Inside the pickle there is a top‑level dictionary.
 
 * The top‑level dictionary now contains two primary keys:
-  * **"data"** – the simulation data as described previously.
   * **"meta_data"** – auxiliary information for each simulation. Currently it stores the number of increments (`"num_increments"`) but can be extended with any other per‑simulation metadata.
+  * **"data"** – the actual simulation data. This is itself a dictionary containing the following:
+      * **Simulation ID (int)** – uniquely identifies a single simulation instance.  
+      * For each ID, the dictionary contains:
+        * **Input variables** – stored directly under descriptive keys (e.g., `"temperature"`, `"stress"`).  
+        * **Outputs** – grouped under a nested dictionary **`"U"`**. The keys inside **`U`** are the output variable names (e.g., `"strain_rate"`, `"dislocation_density_rate"`).
 
-* Each `<sim_id>` is an integer identifier for a single simulation.
-* Input keys are stored directly under the simulation dictionary.
-* Outputs are grouped under the nested dictionary `"U"`.
-* All values are NumPy arrays (or Python lists) representing time‑history data.
-  
-This *data* dictionary maps **simulation IDs** (integers) to the data for each run:
-
-```text
-{
-    "data": {
-        0: { … },
-        1: { … },
-        2: { … },
-        …
-    }
-}
-```
-
-* **Simulation ID (int)** – uniquely identifies a single simulation instance.  
-* For each ID, the dictionary contains:
-  * **Input variables** – stored directly under descriptive keys (e.g., `"temperature"`, `"strain_rate"`).  
-  * **Outputs** – grouped under a nested dictionary **`"U"`**. The keys inside **`U`** are the output variable names (e.g., `"stress"`, `"creep_strain"`).
-
-All input and output entries hold **NumPy arrays or Python lists** of the same length, representing the time‑series or sample points for that variable.
+The surrogate has a grid-based architecture, with its parameter space aligning with the input space. Such a grid-based architecture requires structured data, i.e, all input and output entries hold NumPy arrays or Python lists of the **same length**, representing the time‑series or sample points for that variable.
 
 > **Example (simplified)**  
 > ```python
@@ -53,7 +35,7 @@ All input and output entries hold **NumPy arrays or Python lists** of the same l
 > }
 > ```
 
-In short, the pickle must contain a single dict with a `"data"` entry, where each integer key maps to a dictionary of **input‑variable arrays** plus a sub‑dictionary **`"U"`** that holds the **output‑variable arrays**. This uniform layout allows the subsequent stages of the workflow to reliably extract inputs, generate designs of experiments, and train surrogate models.
+In short, the pickle must contain a dict with a `"data"` entry, where each integer key maps to a dictionary of **input‑variable arrays** plus a sub‑dictionary **`"U"`** that holds the **output‑variable arrays**. This uniform layout allows the subsequent stages of the workflow to reliably extract inputs, generate designs of experiments, and train surrogate models. Furthermore, a `"meta_data"` entry is optional, but can be convenient for tracking information about simulation runs, e.g., the number of time-steps recorded, or the number of simulations ID's that contained no data.
 
 
 ## Training Format

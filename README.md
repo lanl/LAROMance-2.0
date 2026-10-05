@@ -50,7 +50,7 @@ The framework is split into four self‑contained stages—each in its own folde
 
 Follow the numbered folder structure to build a surrogate from scratch. You will need a data generation model first in order to build your database (no generation model is here provided). Example data is located in the `./examples` folder.
 
-Every stage ships a `CONTEXT.md` that details the stage's workflow, scripts, and usage, so you can jump in at any point and run a complete sub‑pipeline. The workflow follows a nexted, numbered folder structure, which form consecutive stages to complete the surrogate building process. The folder structure, with self-explanatory naming, and what each stage and sub-step does, is overviewed as follows:
+Every stage ships a `CONTEXT.md` that details the stage's workflow, scripts, and usage, so you can jump in at any point and run a complete sub‑pipeline. The workflow follows a nested, numbered folder structure that forms the consecutive stages to complete the surrogate building process. The folder structure, with self-explanatory naming, and what each stage and sub-step does, is overviewed as follows:
 
 ```text
 LAROMance-2.0
@@ -86,9 +86,9 @@ Below are brief pointers to the example folders that illustrate how to use each
 stage of the pipeline.  Detailed usage instructions are provided in the
 `README.md` files inside those folders.
 
-* **Viscoplastic‑Creep data** – Located in [examples/Viscoplasicity_Creep](examples/Viscoplasicity_Creep).  The README explains how to load the 5,000‑simulation pickle into the 02_Data_Processing step and then run the Training GUI (31_Surrogate_Training) followed by testing (32_Surrogate_Testing) and porting the MOOSE (FEM framework). 
-  > Tip: run the full pipeline on the creep example (5 k sims) to see everything in action
-* **Training‑Module practice data** – Found in [examples/Training_Module](examples/Training_Module).  This folder contains small synthetic datasets meant solely for exploring the GUI of the training module (step 3.1).  See its README for more info.
+* **Viscoplastic‑Creep data** – Located in [examples/Viscoplasicity_Creep](examples/Viscoplasicity_Creep). The README explains how to load the 5,000‑strong creep simulation data `.pickle` into the `2_Data_Processing` step and then open the Training Module in `31_Surrogate_Training`, test its performance in `32_Surrogate_Testing`, and finally, create the MOOSE material model files (__MOOSE__ is a multi-physics FEM-framework widely used by the nuclear engineerin community). 
+  > Tip: run the pipeline from stage 2 on the creep example (5 k sims) to see everything in action
+* **Training‑Module practice data** – Found in [examples/Training_Module](examples/Training_Module).  This folder contains small synthetic datasets meant solely for exploring the GUI of the Training Modulein `31_Surrogate_Training`.  See its README for more info.
 * There is currently no dummy data generator model for stage **1-Data Generation** for testing or as example. 
 
 

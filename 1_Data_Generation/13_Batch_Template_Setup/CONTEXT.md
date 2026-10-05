@@ -30,7 +30,7 @@ Because the script works purely with *text substitution* (`sed`), it is agnostic
     │   ├─ TIME_PLACE
     │   ├─ STRESS_HOOP_PLACE
     │   └─ STRESS_RADIAL_PLACE
-    └─ Tungsten_fine.sx         ← single‑crystal texture file with placeholder RHOC_PLACE
+    └─ single_crystal_model.sx         ← single‑crystal texture file with placeholder RHOC_PLACE
 ```
 
 > **Important** – The `template_run_folder` is **manually prepared by the user**. It should contain **only** the skeleton input files with the placeholder strings indicated above. No actual simulation data belongs in this folder; the script will later copy and populate it for each sample.

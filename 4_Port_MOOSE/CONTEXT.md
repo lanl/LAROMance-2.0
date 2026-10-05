@@ -1,4 +1,4 @@
-# 4 Port Model to MOOSE (Finite‑Element Framework)
+# 4 - Port Model to MOOSE (Finite‑Element Framework)
 
 The **4_Port_MOOSE** stage bridges the surrogate model generated in the previous
 steps with the MOOSE (and BISON) simulation environment.  It is split into two
