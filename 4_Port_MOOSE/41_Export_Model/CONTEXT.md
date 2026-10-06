@@ -27,9 +27,9 @@ Enter a name for the exported MOOSE model:
 The provided name is also used for the output directory inside `./output`.
 
 ## Expected inputs
-* ``references/SM.pickle`` – the surrogate model dictionary.
-* The script automatically converts any ROI lists to plain Python lists for
-  compatibility.
+* `references/SM.pickle` – the surrogate model dictionary. Needed to execute this stage.
+*`references/base` –  Folder holding two MOOSE C++ files forming the **core LAROMance base class** for MOOSE material models. It is inherited by the material class generated in this stage and works in concert with the accompanying material file, providing all the FEM‑solver‑specific methods required by MOOSE.  The base-class MOOSE files are not needed to execute this stage. They are needed for running the actual MOOSE model that is generated from the surrogate. 
+
 
 ## Generated outputs (placed in `./output`)
 * ``SM.pickle`` – the extrapolated surrogate model.

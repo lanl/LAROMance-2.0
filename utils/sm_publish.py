@@ -1106,19 +1106,19 @@ def write_moose_h(SM: dict, name : str):
 # Generate the content of the .h-file.
     txt = """
 /************************************************************************************/
-/*                        © 2026 Triad National Security, LLC                       */
-/*                                ALL RIGHTS RESERVED                               */
+/* © 2026. Triad National Security, LLC. All rights reserved.                       */
 /*                                                                                  */
-/* This software was produced under U.S. Government contract 89233218CNA000001 for  */
+/* This program was produced under U.S. Government contract 89233218CNA000001 for   */
 /* Los Alamos National Laboratory (LANL), which is operated by Triad National       */
 /* Security, LLC for the U.S. Department of Energy/National Nuclear Security        */
-/* Administration. The U.S. Government has rights to use, reproduce, and distribute */
-/* this software. NEITHER THE GOVERNMENT NOR TRIAD NATIONAL SECURITY, LLC MAKES ANY */
-/* WARRANTY, EXPRESS OR IMPLIED, OR ASSUMES ANY LIABILITY FOR THE USE OF THIS       */
-/* SOFTWARE. If software is modified to produce derivative works, such modified     */
-/* software should be clearly marked, so as not to confuse it with the version      */
-/* available from LANL.                                                             */
+/* Administration. All rights in the program are reserved by Triad National         */
+/* Security, LLC, and the U.S. Department of Energy/National Nuclear Security       */
+/* Administration. The Government is granted for itself and others acting on its    */
+/* behalf a nonexclusive, paid‑up, irrevocable worldwide license in this material to*/
+/* reproduce, prepare derivative works, distribute copies to the public, perform    */
+/* publicly and display publicly, and to permit others to do so.                    */
 /************************************************************************************/
+
 #pragma once
 
 #include "LAesStressUpdateBaseNew.h"
@@ -1169,19 +1169,6 @@ def write_moose_h_cached(SM: dict, name : str):
 # Generate the content of the .h-file.
     txt = """
 /************************************************************************************/
-/*                        © 2026 Triad National Security, LLC                       */
-/*                                ALL RIGHTS RESERVED                               */
-/*                                                                                  */
-/* This software was produced under U.S. Government contract 89233218CNA000001 for  */
-/* Los Alamos National Laboratory (LANL), which is operated by Triad National       */
-/* Security, LLC for the U.S. Department of Energy/National Nuclear Security        */
-/* Administration. The U.S. Government has rights to use, reproduce, and distribute */
-/* this software. NEITHER THE GOVERNMENT NOR TRIAD NATIONAL SECURITY, LLC MAKES ANY */
-/* WARRANTY, EXPRESS OR IMPLIED, OR ASSUMES ANY LIABILITY FOR THE USE OF THIS       */
-/* SOFTWARE. If software is modified to produce derivative works, such modified     */
-/* software should be clearly marked, so as not to confuse it with the version      */
-/* available from LANL.                                                             */
-/*                                                                                  */
 /* © 2026. Triad National Security, LLC. All rights reserved.                       */
 /*                                                                                  */
 /* This program was produced under U.S. Government contract 89233218CNA000001 for   */
@@ -1409,19 +1396,6 @@ def write_moose_C(SM: dict, name: str):
     # Generate the content of the .C-file.
     txt = """
 /************************************************************************************/
-/*                        © 2026 Triad National Security, LLC                       */
-/*                                ALL RIGHTS RESERVED                               */
-/*                                                                                  */
-/* This software was produced under U.S. Government contract 89233218CNA000001 for  */
-/* Los Alamos National Laboratory (LANL), which is operated by Triad National       */
-/* Security, LLC for the U.S. Department of Energy/National Nuclear Security        */
-/* Administration. The U.S. Government has rights to use, reproduce, and distribute */
-/* this software. NEITHER THE GOVERNMENT NOR TRIAD NATIONAL SECURITY, LLC MAKES ANY */
-/* WARRANTY, EXPRESS OR IMPLIED, OR ASSUMES ANY LIABILITY FOR THE USE OF THIS       */
-/* SOFTWARE. If software is modified to produce derivative works, such modified     */
-/* software should be clearly marked, so as not to confuse it with the version      */
-/* available from LANL.                                                             */
-/*                                                                                  */
 /* © 2026. Triad National Security, LLC. All rights reserved.                       */
 /*                                                                                  */
 /* This program was produced under U.S. Government contract 89233218CNA000001 for   */
@@ -1709,19 +1683,6 @@ def write_moose_C_4D_cached(SM: dict, name: str):
     # Generate the content of the .C-file.
     txt = """
 /************************************************************************************/
-/*                        © 2026 Triad National Security, LLC                       */
-/*                                ALL RIGHTS RESERVED                               */
-/*                                                                                  */
-/* This software was produced under U.S. Government contract 89233218CNA000001 for  */
-/* Los Alamos National Laboratory (LANL), which is operated by Triad National       */
-/* Security, LLC for the U.S. Department of Energy/National Nuclear Security        */
-/* Administration. The U.S. Government has rights to use, reproduce, and distribute */
-/* this software. NEITHER THE GOVERNMENT NOR TRIAD NATIONAL SECURITY, LLC MAKES ANY */
-/* WARRANTY, EXPRESS OR IMPLIED, OR ASSUMES ANY LIABILITY FOR THE USE OF THIS       */
-/* SOFTWARE. If software is modified to produce derivative works, such modified     */
-/* software should be clearly marked, so as not to confuse it with the version      */
-/* available from LANL.                                                             */
-/*                                                                                  */
 /* © 2026. Triad National Security, LLC. All rights reserved.                       */
 /*                                                                                  */
 /* This program was produced under U.S. Government contract 89233218CNA000001 for   */
@@ -2068,19 +2029,6 @@ def write_moose_C_5D_cached(SM: dict, name: str):
     # Generate the content of the .C-file.
     txt = """
 /************************************************************************************/
-/*                        © 2026 Triad National Security, LLC                       */
-/*                                ALL RIGHTS RESERVED                               */
-/*                                                                                  */
-/* This software was produced under U.S. Government contract 89233218CNA000001 for  */
-/* Los Alamos National Laboratory (LANL), which is operated by Triad National       */
-/* Security, LLC for the U.S. Department of Energy/National Nuclear Security        */
-/* Administration. The U.S. Government has rights to use, reproduce, and distribute */
-/* this software. NEITHER THE GOVERNMENT NOR TRIAD NATIONAL SECURITY, LLC MAKES ANY */
-/* WARRANTY, EXPRESS OR IMPLIED, OR ASSUMES ANY LIABILITY FOR THE USE OF THIS       */
-/* SOFTWARE. If software is modified to produce derivative works, such modified     */
-/* software should be clearly marked, so as not to confuse it with the version      */
-/* available from LANL.                                                             */
-/*                                                                                  */
 /* © 2026. Triad National Security, LLC. All rights reserved.                       */
 /*                                                                                  */
 /* This program was produced under U.S. Government contract 89233218CNA000001 for   */
@@ -2440,19 +2388,6 @@ def write_moose_C_6D_cached(SM: dict, name: str):
     # Generate the content of the .C-file.
     txt = """
 /************************************************************************************/
-/*                        © 2026 Triad National Security, LLC                       */
-/*                                ALL RIGHTS RESERVED                               */
-/*                                                                                  */
-/* This software was produced under U.S. Government contract 89233218CNA000001 for  */
-/* Los Alamos National Laboratory (LANL), which is operated by Triad National       */
-/* Security, LLC for the U.S. Department of Energy/National Nuclear Security        */
-/* Administration. The U.S. Government has rights to use, reproduce, and distribute */
-/* this software. NEITHER THE GOVERNMENT NOR TRIAD NATIONAL SECURITY, LLC MAKES ANY */
-/* WARRANTY, EXPRESS OR IMPLIED, OR ASSUMES ANY LIABILITY FOR THE USE OF THIS       */
-/* SOFTWARE. If software is modified to produce derivative works, such modified     */
-/* software should be clearly marked, so as not to confuse it with the version      */
-/* available from LANL.                                                             */
-/*                                                                                  */
 /* © 2026. Triad National Security, LLC. All rights reserved.                       */
 /*                                                                                  */
 /* This program was produced under U.S. Government contract 89233218CNA000001 for   */
@@ -2807,19 +2742,6 @@ def write_moose_C_cached_8D(SM: dict, name: str):
     # Generate the content of the .C-file.
     txt = """
 /************************************************************************************/
-/*                        © 2026 Triad National Security, LLC                       */
-/*                                ALL RIGHTS RESERVED                               */
-/*                                                                                  */
-/* This software was produced under U.S. Government contract 89233218CNA000001 for  */
-/* Los Alamos National Laboratory (LANL), which is operated by Triad National       */
-/* Security, LLC for the U.S. Department of Energy/National Nuclear Security        */
-/* Administration. The U.S. Government has rights to use, reproduce, and distribute */
-/* this software. NEITHER THE GOVERNMENT NOR TRIAD NATIONAL SECURITY, LLC MAKES ANY */
-/* WARRANTY, EXPRESS OR IMPLIED, OR ASSUMES ANY LIABILITY FOR THE USE OF THIS       */
-/* SOFTWARE. If software is modified to produce derivative works, such modified     */
-/* software should be clearly marked, so as not to confuse it with the version      */
-/* available from LANL.                                                             */
-/*                                                                                  */
 /* © 2026. Triad National Security, LLC. All rights reserved.                       */
 /*                                                                                  */
 /* This program was produced under U.S. Government contract 89233218CNA000001 for   */
@@ -3111,19 +3033,6 @@ def write_moose_6d_C(SM: dict, name: str):
     # Generate the content of the .C-file.
     txt = """
 /************************************************************************************/
-/*                        © 2026 Triad National Security, LLC                       */
-/*                                ALL RIGHTS RESERVED                               */
-/*                                                                                  */
-/* This software was produced under U.S. Government contract 89233218CNA000001 for  */
-/* Los Alamos National Laboratory (LANL), which is operated by Triad National       */
-/* Security, LLC for the U.S. Department of Energy/National Nuclear Security        */
-/* Administration. The U.S. Government has rights to use, reproduce, and distribute */
-/* this software. NEITHER THE GOVERNMENT NOR TRIAD NATIONAL SECURITY, LLC MAKES ANY */
-/* WARRANTY, EXPRESS OR IMPLIED, OR ASSUMES ANY LIABILITY FOR THE USE OF THIS       */
-/* SOFTWARE. If software is modified to produce derivative works, such modified     */
-/* software should be clearly marked, so as not to confuse it with the version      */
-/* available from LANL.                                                             */
-/*                                                                                  */
 /* © 2026. Triad National Security, LLC. All rights reserved.                       */
 /*                                                                                  */
 /* This program was produced under U.S. Government contract 89233218CNA000001 for   */
@@ -3136,6 +3045,8 @@ def write_moose_6d_C(SM: dict, name: str):
 /* reproduce, prepare derivative works, distribute copies to the public, perform    */
 /* publicly and display publicly, and to permit others to do so.                    */
 /************************************************************************************/
+
+
 
 #include "{0}.h"
 
