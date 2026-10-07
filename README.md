@@ -34,7 +34,7 @@ python -m pip install --upgrade pip
 # 3. Install the core dependencies
 pip install --upgrade pip
 pip install \
-    PyQt5 \
+    PySide6 \
     numpy \
     matplotlib \
     scipy \

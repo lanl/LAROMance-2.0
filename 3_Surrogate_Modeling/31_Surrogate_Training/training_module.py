@@ -21,13 +21,13 @@ import numpy as np
 import copy
 import pickle
 import json
-from PyQt5 import QtWidgets, QtCore, QtGui
-from PyQt5.QtCore import QObject, pyqtSignal
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
+from PySide6 import QtWidgets, QtCore, QtGui
+from PySide6.QtCore import QObject, Signal
+from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.backends.backend_qtagg import NavigationToolbar2QT as NavigationToolbar
 
 
-from PyQt5.QtWidgets import QInputDialog
+from PySide6.QtWidgets import QInputDialog
 from matplotlib.figure import Figure
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
@@ -53,6 +53,9 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
         smp.darktheme(True)
         self.setWindowTitle("Surrogate Model Builder")
         self.setGeometry(100, 100, 1600, 900)
+
+        # Apply modern dark theme stylesheet
+        self._apply_modern_dark_theme()
 
         self.state_file = "references/last_gui_state.json"
         self.editable_labels = {}  # Store for editable labels
@@ -130,7 +133,6 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
         
         # Insert Load Training button before other buttons in the result tab
         load_training_btn = QtWidgets.QPushButton("Load Training")
-        load_training_btn.setStyleSheet("background-color: orange; color: black;")
         load_training_btn.clicked.connect(self.load_training_result)
         btn_row.insertWidget(0, load_training_btn)
 
@@ -206,6 +208,177 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
         self.result_canvas = None
         
         self.load_state()  
+
+    def _apply_modern_dark_theme(self):
+        """Apply a sleek, modern dark-mode stylesheet with a professional color palette."""
+        qss = """
+        /* === Global === */
+        QMainWindow {
+            background-color: #1e1e2e;
+        }
+        QWidget {
+            background-color: #1e1e2e;
+            color: #d4d4d4;
+            font-family: "Segoe UI", "Inter", "Helvetica Neue", Arial, sans-serif;
+            font-size: 13px;
+        }
+
+        /* === Group Boxes (Cards) === */
+        QGroupBox {
+            border: 1px solid #3c3c5a;
+            border-radius: 8px;
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #25253a;
+        }
+        QGroupBox::title {
+            subcontrol-origin: margin;
+            subcontrol-position: top left;
+            padding: 4px 10px;
+            background-color: #25253a;
+            color: #a5b4fc;
+            font-weight: 600;
+            font-size: 13px;
+        }
+
+        /* === Buttons === */
+        QPushButton {
+            background-color: #2d2d44;
+            color: #e0e0e0;
+            border: 1px solid #3c3c5a;
+            border-radius: 6px;
+            padding: 6px 14px;
+            min-height: 28px;
+        }
+        QPushButton:hover {
+            background-color: #3a3a55;
+            border-color: #6366f1;
+        }
+        QPushButton:pressed {
+            background-color: #1f1f33;
+        }
+
+        /* Primary action buttons */
+        QPushButton[text*="Run Training"] {
+            background-color: #22c55e;
+            color: white;
+            font-weight: 600;
+            border: none;
+        }
+        QPushButton[text*="Run Training"]:hover {
+            background-color: #16a34a;
+        }
+
+        QPushButton[text*="Load Training"] {
+            background-color: #6366f1;
+            color: black;
+            font-weight: 600;
+            border: none;
+        }
+        QPushButton[text*="Load Training"]:hover {
+            background-color: #d97706;
+        }
+
+        QPushButton[text*="Preview Mesh"] {
+            background-color: #6366f1;
+            color: white;
+            font-weight: 500;
+            border: none;
+        }
+        QPushButton[text*="Preview Mesh"]:hover {
+            background-color: #d97706;
+        }
+
+        /* Small +/- buttons */
+        QPushButton[text="➕"], QPushButton[text="➖"] {
+            background-color: #2d2d44;
+            border: 1px solid #3c3c5a;
+            padding: 2px;
+            font-size: 14px;
+            min-width: 22px;
+            max-width: 22px;
+            min-height: 22px;
+            max-height: 22px;
+        }
+        QPushButton[text="➕"]:hover { background-color: #22c55e; color: white; }
+        QPushButton[text="➖"]:hover { background-color: #ef4444; color: white; }
+
+        /* === Combo Boxes & Line Edits === */
+        QComboBox, QLineEdit, QSpinBox, QDoubleSpinBox {
+            background-color: #1f1f33;
+            border: 1px solid #3c3c5a;
+            border-radius: 4px;
+            padding: 4px 8px;
+            color: #d4d4d4;
+        }
+        QComboBox:hover, QLineEdit:hover {
+            border-color: #6366f1;
+        }
+        QComboBox::drop-down {
+            border: none;
+        }
+
+        /* === Checkboxes === */
+        QCheckBox {
+            spacing: 6px;
+        }
+        QCheckBox::indicator {
+            width: 16px;
+            height: 16px;
+            border: 1px solid #6366f1;
+            border-radius: 3px;
+            background-color: #1f1f33;
+        }
+        QCheckBox::indicator:checked {
+            background-color: #6366f1;
+            image: url(none);
+        }
+
+        /* === Tabs === */
+        QTabWidget::pane {
+            border: 1px solid #3c3c5a;
+            border-radius: 6px;
+            background: #25253a;
+        }
+        QTabBar::tab {
+            background: #1f1f33;
+            color: #a1a1aa;
+            padding: 8px 18px;
+            border-top-left-radius: 6px;
+            border-top-right-radius: 6px;
+        }
+        QTabBar::tab:selected {
+            background: #6366f1;
+            color: white;
+            font-weight: 600;
+        }
+        QTabBar::tab:hover {
+            background: #3a3a55;
+            color: #e0e0e0;
+        }
+
+        /* === Text Edit (Config Preview) === */
+        QTextEdit {
+            background-color: #1f1f33;
+            border: 1px solid #3c3c5a;
+            border-radius: 6px;
+            font-family: "JetBrains Mono", "Fira Code", monospace;
+            font-size: 12px;
+        }
+
+        /* === Scrollbars === */
+        QScrollBar:vertical {
+            background: #1f1f33;
+            width: 8px;
+            margin: 0;
+        }
+        QScrollBar::handle:vertical {
+            background: #6366f1;
+            min-height: 20px;
+            border-radius: 4px;
+        }
+        """
+        self.setStyleSheet(qss)
 
     def show_prev_plot(self):
         if self.data_canvas_2d is not None:
@@ -1190,12 +1363,10 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
         # Add the input buttons (aligned left)
         remove_input_button = QtWidgets.QPushButton("➖")
         remove_input_button.setFixedSize(20, 16)
-        remove_input_button.setStyleSheet("background-color: red; color: white;")
         remove_input_button.clicked.connect(self.remove_input_cb)
 
         add_input_button = QtWidgets.QPushButton("➕")
         add_input_button.setFixedSize(20, 16)
-        add_input_button.setStyleSheet("background-color: green; color: white;")
         add_input_button.clicked.connect(self.add_input_cb)
 
         input_and_mesh_row.addWidget(remove_input_button)
@@ -1236,12 +1407,10 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
 
         remove_output_button = QtWidgets.QPushButton("➖")
         remove_output_button.setFixedSize(20, 16)
-        remove_output_button.setStyleSheet("background-color: red; color: white;")
         remove_output_button.clicked.connect(self.remove_output_cb)
 
         add_output_button = QtWidgets.QPushButton("➕")
         add_output_button.setFixedSize(20, 16)
-        add_output_button.setStyleSheet("background-color: green; color: white;")
         add_output_button.clicked.connect(self.add_output_cb)
 
         output_btn_row.addWidget(remove_output_button)
@@ -1296,7 +1465,6 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
         self.setup_layout.addWidget(plot_button)
 
         run_button = QtWidgets.QPushButton("Run Training")
-        run_button.setStyleSheet("background-color: green; color: white;")
         run_button.clicked.connect(self.run_training)
         self.setup_layout.addWidget(run_button)
 
@@ -1486,7 +1654,7 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
     
     def toggle_theme(self, state):
         """Toggle between dark and light theme for plots"""
-        is_dark = bool(state == QtCore.Qt.Checked)
+        is_dark = bool(state == QtCore.Qt.CheckState.Checked)
         smp.darktheme(is_dark)
         
         # Update all existing plots

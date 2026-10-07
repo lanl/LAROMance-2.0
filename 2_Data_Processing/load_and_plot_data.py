@@ -141,7 +141,7 @@ if args.pickle_files:
 else:
     # Preserve original behaviour – load the single default file.
     file_list = [
-        'ht9_0_implicit.pickle',
+        'data.pickle',
     ]
 for fn in file_list:
     full_path = os.path.join(data_path, fn)
