@@ -1,9 +1,9 @@
 endtime = 1e11 # ~1500 hr
-#P = 200.0e6
-#T = 750.0
-rhoc = 2.0e+14
+P = 200.0e6
+T = 750.0
+rhoc = 5.0e+13
 dt = 1e-6
-model = Zry4FY26CreepLAROMance900
+model = TestModel
 date = 20260309
 
 [Mesh]
@@ -42,12 +42,15 @@ date = 20260309
   [../]
 []
 
-[Modules/TensorMechanics/Master]
+[Physics/SolidMechanics/QuasiStatic]
   [all]
-    strain = FINITE
+    strain = finite
     add_variables = true
-    generate_output = 'strain_xx strain_yy strain_zz strain_yz strain_zx strain_xy stress_xx stress_yy stress_zz stress_yz stress_zx stress_xy vonmises_stress'
+    incremental = true
+    generate_output = 'vonmises_stress  stress_xx stress_yy stress_zz strain_yy strain_xx strain_zz creep_strain_xx creep_strain_yy'
     use_automatic_differentiation = false
+    decomposition_method = EigenSolution
+    # eigenstrain_names = 'cladding_thermal_eigenstrain'
   []
 []
 
@@ -125,10 +128,11 @@ date = 20260309
     max_relative_cell_dislocation_increment = 1e-1 
     outputs = all
     verbose = false
+
     stress_input_window_low_failure = EXTRAPOLATE
-    stress_input_window_high_failure = EXCEPTION
-    temperature_input_window_high_failure = ERROR
-    temperature_input_window_low_failure = EXTRAPOLATE
+    stress_input_window_high_failure = USELIMIT
+    temperature_input_window_high_failure = USELIMIT
+    temperature_input_window_low_failure = USELIMIT
     cell_input_window_low_failure = USELIMIT
     cell_input_window_high_failure = USELIMIT
     internal_solve_output_on = on_error
@@ -154,8 +158,8 @@ date = 20260309
   petsc_options_iname = '-pc_type -pc_factor_mat_solver_package'
   petsc_options_value = 'lu       superlu_dist'
 
-  nl_abs_tol = 1e-8
-  nl_rel_tol = 1e-5
+  nl_rel_tol = 1e-8
+  nl_abs_tol = 1e-10
   line_search = 'none'
   automatic_scaling = true
   compute_scaling_once = true
@@ -304,7 +308,7 @@ date = 20260309
 []
 
 [Outputs]
-  file_base = ${model}_1-element_T-${T}K_P-${P}MPa_rhoc-${rhoc}_${date}
+  file_base = ${model}_1-element_T-${T}_P-${P}_rhoc-${rhoc}_${date}
   csv = true
   gnuplot = true
   print_linear_residuals = true
