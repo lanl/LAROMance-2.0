@@ -255,18 +255,7 @@ date = 20260309
     type = ElementAverageValue
     variable = strain_zz
   [../]
-  [./strain_zx]
-    type = ElementAverageValue
-    variable = strain_zx
-  [../]
-  [./strain_xy]
-    type = ElementAverageValue
-    variable = strain_xy
-  [../]
-  [./strain_yz]
-    type = ElementAverageValue
-    variable = strain_yz
-  [../]
+
   [./stress_zz]
     type = ElementAverageValue
     variable = stress_zz
@@ -279,18 +268,7 @@ date = 20260309
     type = ElementAverageValue
     variable = stress_yy
   [../]
-  [./stress_zx]
-    type = ElementAverageValue
-    variable = stress_zx
-  [../]
-  [./stress_xy]
-    type = ElementAverageValue
-    variable = stress_xy
-  [../]
-  [./stress_yz]
-    type = ElementAverageValue
-    variable = stress_yz
-  [../]
+
 
   [./stress_xx_max]
     type = ElementExtremeValue
