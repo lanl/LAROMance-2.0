@@ -12,8 +12,9 @@ Viscoplasicity_Creep/
 ```
 
 **Configuration JSON**
+The file `Example_Training_Module_Config.json` is a ready‑to‑use configuration that can be fed directly to the **31_Surrogate_Training** GUI (the Training Module) after the raw pickle has been curated with the **02_Data_Processing** step. It defines which variables are treated as inputs (`vmJ2`, `temperature`, `evm`, `rhoc`) and outputs (`evm`, `rhoc`), the discretisation of the `evm` axis (a list of anchor points), mapping options (min‑max, log10, symlog), and several flags used by the training interface (e.g., whether to plot histograms or remove sparse elements). 
 
-The file `Example_Training_Module_Config.json` is a ready‑to‑use configuration that can be fed directly to the **31_Surrogate_Training** GUI (the Training Module) after the raw pickle has been curated with the **02_Data_Processing** step. It defines which variables are treated as inputs (`vmJ2`, `temperature`, `evm`, `rhoc`) and outputs (`evm`, `rhoc`), the discretisation of the `evm` axis (a list of anchor points), mapping options (min‑max, log10, symlog), and several flags used by the training interface (e.g., whether to plot histograms or remove sparse elements). By pointing the `data_file` entry to the curated training pickle (produced in step 2), this JSON enables a quick launch of the surrogate‑training workflow without manual configuration. 
+>Tip: by loading the `Example_Training_Module_Config.json` file in the Training Module (left-top of the GUI), this JSON enables a quick launch of the surrogate‑training workflow without manual configuration for this particular dataset.
 
 The pickle stores a **Python dictionary** where each key is a *simulation ID*
 (`int` ranging from `1` to `5000`).  The value for each ID is another dictionary

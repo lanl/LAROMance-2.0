@@ -1,21 +1,21 @@
-endtime = 1e11 # ~1500 hr
+# some global input variables
+endtime = 1e8 #  ~ 3 years
 P = 200.0e6
-T = 750.0
-rhoc = 5.0e+13
+T = 2000.0
+rhoc = 1.0e+14
 dt = 1e-6
 model = TestModel
-date = 20260309
 
 [Mesh]
   [rod]
     type = GeneratedMeshGenerator
     dim = 3
     xmin = 0.0
-    xmax = 1.0e-3
+    xmax = 1.0e-4
     ymin = 0.0
-    ymax = 1.0e-3
+    ymax = 1.0e-4
     zmin = 0.0
-    zmax = 1.0e-3
+    zmax = 1.0e-4
     nx = 1
     ny = 1
     nz = 1
@@ -73,12 +73,6 @@ date = 20260309
     boundary = back
     value = 0
   []
-  # [u_x]
-  #   type = FunctionDirichletBC
-  #   variable = disp_x
-  #   boundary = right
-  #   function = u_pos
-  # []
   [pressure_x]
     type = FunctionNeumannBC
     variable = disp_x
@@ -93,19 +87,10 @@ date = 20260309
     x = '0 ${endtime}'
     y = '${P} ${P}'
   [../]
-
-  # [./u_pos]
-  #   type = PiecewiseLinear
-  #   x = '0 ${endtime}'
-  #   y = '${ustart} ${uend}'
-  # [../]
-
   [./temp_func]
     type = PiecewiseLinear
     x = '0 ${endtime}'
     y = '${T} ${T}'
-    # type = ParsedFunction
-    # value = (573+t)*exp((100-abs(y))^10/1e22)
   [../]
 []
 
@@ -120,24 +105,27 @@ date = 20260309
     inelastic_models = 'rom_stress_prediction_base'
   []
   [rom_stress_prediction_base]
-    type = ${model}
+    type = ${model} # <-- model comes from the global params set at the top of this input file.
+    # Input to the ROM stress prediction model
     temperature = temperature
-    relative_tolerance = 1e-8
     initial_cell_dislocation_density = ${rhoc} 
+    # Outputs
+    outputs = all
+    # Update limits for coupled inputs that are computed from output rates via time-step multiplication (e.g., inelastic strain increment and cell dislocation density increment)
     max_inelastic_increment = 1e-2 
     max_relative_cell_dislocation_increment = 1e-1 
-    outputs = all
-    verbose = false
-
+    #  Out-of-bounds handling (USELIMIT > snap to bounds, EXTRAPOLATE > use extrapolated value, ERROR > throw an error, WARN > issue a warning, IGNORE/DONOTHING > ignore the violation)
     stress_input_window_low_failure = EXTRAPOLATE
     stress_input_window_high_failure = USELIMIT
-    temperature_input_window_high_failure = USELIMIT
+    temperature_input_window_high_failure = ERROR
     temperature_input_window_low_failure = USELIMIT
     cell_input_window_low_failure = USELIMIT
     cell_input_window_high_failure = USELIMIT
+    # Extra
     internal_solve_output_on = on_error
     internal_solve_full_iteration_history = false
-    use_kdtree_indexing = true
+    use_kdtree_indexing = true # <- speeds up surrogate element searches: true unless mesh is highly non-uniform. False behavior will cause significant slow-down.
+    verbose = false
   []
 []
 
@@ -148,25 +136,23 @@ date = 20260309
   [../]
 []
 
-
 [Executioner]
   type = Transient
-
   solve_type = 'NEWTON'
-  # petsc_options_iname = '-pc_type'
-  # petsc_options_value = 'lu'
   petsc_options_iname = '-pc_type -pc_factor_mat_solver_package'
   petsc_options_value = 'lu       superlu_dist'
-
   nl_rel_tol = 1e-8
   nl_abs_tol = 1e-10
   line_search = 'none'
+
   automatic_scaling = true
   compute_scaling_once = true
+  use_pre_SMO_residual = true
   l_max_its = 1
-  nl_max_its = 7
+  nl_max_its = 10
   end_time = ${endtime}
   nl_forced_its = 1
+
   [./TimeStepper]
     timestep_limiting_postprocessor = time_step_limit
     type = IterationAdaptiveDT
@@ -286,10 +272,10 @@ date = 20260309
 []
 
 [Outputs]
-  file_base = ${model}_1-element_T-${T}_P-${P}_rhoc-${rhoc}_${date}
+  # file_base = ${model}_1-element_T-${T}_P-${P}_rhoc-${rhoc}
   csv = true
   gnuplot = true
   print_linear_residuals = true
   perf_graph = true
-  # output_on = 'initial timestep_end'
+  output_on = 'initial timestep_end'
 []

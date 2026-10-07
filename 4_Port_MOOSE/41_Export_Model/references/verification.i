@@ -59,16 +59,8 @@
     xy_in_file_only = false
     direction = LEFT_INCLUSIVE
   []
-  [rhow_fcn]
-    type = PiecewiseConstant
-    data_file = benchmarks.csv
-    x_index_in_file = 0
-    y_index_in_file = 5
-    format = columns
-    xy_in_file_only = false
-    direction = LEFT_INCLUSIVE
-  []
-  [defect_fcn]
+
+  [creep_rate_soln_fcn]
     type = PiecewiseConstant
     data_file = benchmarks.csv
     x_index_in_file = 0
@@ -81,29 +73,12 @@
     type = PiecewiseConstant
     data_file = benchmarks.csv
     x_index_in_file = 0
-    y_index_in_file = 8
+    y_index_in_file = 7
     format = columns
     xy_in_file_only = false
     direction = LEFT_INCLUSIVE
   []
-  [rhow_rate_soln_fcn]
-    type = PiecewiseConstant
-    data_file = benchmarks.csv
-    x_index_in_file = 0
-    y_index_in_file = 9
-    format = columns
-    xy_in_file_only = false
-    direction = LEFT_INCLUSIVE
-  []
-  [creep_rate_soln_fcn]
-    type = PiecewiseConstant
-    data_file = benchmarks.csv
-    x_index_in_file = 0
-    y_index_in_file = 10
-    format = columns
-    xy_in_file_only = false
-    direction = LEFT_INCLUSIVE
-  []
+
 []
 
 [Physics]
@@ -157,14 +132,9 @@
     type = ComputeMultipleInelasticStress
     inelastic_models = rom_stress_prediction
   []
-  [defect_rate]
-    type = GenericFunctionMaterial
-    prop_names = 'defect_rate'
-    prop_values = 'defect_rate_fcn'
-    outputs = all
-  []
+
   [rom_stress_prediction]
-    type = test
+    type = TestModel
     temperature = temperature
     effective_inelastic_strain_name = effective_creep_strain
     internal_solve_full_iteration_history = true
@@ -172,12 +142,9 @@
     verbose = false
     outputs = all
     effective_stress_forcing_function = vmJ2_fcn
-    wall_dislocation_density_forcing_function = rhoc_fcn
-    cell_dislocation_density_forcing_function = rhom_fcn
+    cell_dislocation_density_forcing_function = rhoc_fcn
     old_creep_strain_forcing_function = evm_fcn
-    environmental_factor = defect_rate
-    wall_input_window_low_failure = IGNORE
-    wall_input_window_high_failure = IGNORE
+
     cell_input_window_low_failure = IGNORE
     cell_input_window_high_failure = IGNORE
     temperature_input_window_low_failure = ERROR
@@ -223,47 +190,31 @@
     type = ElementAverageMaterialProperty
     mat_prop = cell_dislocation_rate
   []
-  [rhow_rate]
-    type = ElementAverageMaterialProperty
-    mat_prop = wall_dislocation_rate
-  []
+
   [creep_rate]
     type = ElementAverageMaterialProperty
     mat_prop = creep_rate
   []
   [rhoc_in]
     type = FunctionValuePostprocessor
-    function = rhom_fcn
+    function = rhoc_fcn
     execute_on = 'TIMESTEP_END initial'
     # outputs = console
   []
-  [rhow_in]
-    type = FunctionValuePostprocessor
-    function = rhoi_fcn
-    execute_on = 'TIMESTEP_END initial'
-    # outputs = console
-  []
+
   [vmJ2]
     type = FunctionValuePostprocessor
     function = vmJ2_fcn
     execute_on = 'TIMESTEP_END initial'
     # outputs = console
   []
-  [defect_rate]
-    type = ElementAverageValue
-    variable = defect_rate
-    # outputs = console
-  []
+
   [rhoc_rate_soln]
     type = FunctionValuePostprocessor
-    function = rhom_rate_soln_fcn
+    function = rhoc_rate_soln_fcn
     # outputs = console
   []
-  [rhow_rate_soln]
-    type = FunctionValuePostprocessor
-    function = rhoi_rate_soln_fcn
-    # outputs = console
-  []
+
   [creep_rate_soln]
     type = FunctionValuePostprocessor
     function = creep_rate_soln_fcn
@@ -276,12 +227,7 @@
     expression = '(rhoc_rate_soln - rhoc_rate) / rhoc_rate_soln'
     # outputs = console
   []
-  [rhow_rate_diff]
-    type = ParsedPostprocessor
-    pp_names = 'rhow_rate_soln rhow_rate'
-    expression = '(rhow_rate_soln - rhow_rate) / rhow_rate_soln'
-    # outputs = console
-  []
+
   [creep_rate_diff]
     type = ParsedPostprocessor
     pp_names = 'creep_rate creep_rate_soln'
@@ -294,11 +240,7 @@
     postprocessor = rhoc_rate_diff
     value_type = abs_max
   []
-  [z_rhow_rate_max_diff]
-    type = TimeExtremeValue
-    postprocessor = rhow_rate_diff
-    value_type = abs_max
-  []
+
   [z_creep_rate_max_diff]
     type = TimeExtremeValue
     postprocessor = creep_rate_diff
