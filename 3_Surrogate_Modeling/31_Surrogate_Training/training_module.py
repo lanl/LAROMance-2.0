@@ -210,14 +210,14 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
         self.load_state()  
 
     def _apply_modern_dark_theme(self):
-        """Apply a sleek, modern dark-mode stylesheet with a professional color palette."""
+        """Black-metallic dark theme with silver accents and subtle gradients."""
         qss = """
         /* === Global === */
         QMainWindow {
-            background-color: #1e1e2e;
+            background-color: #0f0f0f;
         }
         QWidget {
-            background-color: #1e1e2e;
+            background-color: #0f0f0f;
             color: #d4d4d4;
             font-family: "Segoe UI", "Inter", "Helvetica Neue", Arial, sans-serif;
             font-size: 13px;
@@ -225,74 +225,83 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
 
         /* === Group Boxes (Cards) === */
         QGroupBox {
-            border: 1px solid #3c3c5a;
+            border: 1px solid #3a3a3a;
             border-radius: 8px;
             margin-top: 10px;
             padding: 10px;
-            background-color: #25253a;
+            background-color: #1a1a1c;
         }
         QGroupBox::title {
             subcontrol-origin: margin;
             subcontrol-position: top left;
             padding: 4px 10px;
-            background-color: #25253a;
-            color: #a5b4fc;
+            background-color: #1a1a1c;
+            color: #c0c0c0;
             font-weight: 600;
             font-size: 13px;
         }
 
-        /* === Buttons === */
+        /* === Buttons (metallic look) === */
         QPushButton {
-            background-color: #2d2d44;
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 #2a2a2c, stop:1 #1f1f21);
             color: #e0e0e0;
-            border: 1px solid #3c3c5a;
+            border: 1px solid #3a3a3a;
             border-radius: 6px;
             padding: 6px 14px;
             min-height: 28px;
         }
         QPushButton:hover {
-            background-color: #3a3a55;
-            border-color: #6366f1;
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 #3a3a3c, stop:1 #2a2a2c);
+            border-color: #a8a8a8;
         }
         QPushButton:pressed {
-            background-color: #1f1f33;
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 #1a1a1c, stop:1 #121212);
         }
 
         /* Primary action buttons */
         QPushButton[text*="Run Training"] {
-            background-color: #22c55e;
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 #22c55e, stop:1 #16a34a);
             color: white;
             font-weight: 600;
             border: none;
         }
         QPushButton[text*="Run Training"]:hover {
-            background-color: #16a34a;
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 #16a34a, stop:1 #15803d);
         }
 
         QPushButton[text*="Load Training"] {
-            background-color: #6366f1;
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 #a8a8a8, stop:1 #7a7a7a);
             color: black;
             font-weight: 600;
             border: none;
         }
         QPushButton[text*="Load Training"]:hover {
-            background-color: #d97706;
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 #c0c0c0, stop:1 #8a8a8a);
         }
 
         QPushButton[text*="Preview Mesh"] {
-            background-color: #6366f1;
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 #a8a8a8, stop:1 #7a7a7a);
             color: white;
             font-weight: 500;
             border: none;
         }
         QPushButton[text*="Preview Mesh"]:hover {
-            background-color: #d97706;
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 #c0c0c0, stop:1 #8a8a8a);
         }
 
         /* Small +/- buttons */
         QPushButton[text="➕"], QPushButton[text="➖"] {
-            background-color: #2d2d44;
-            border: 1px solid #3c3c5a;
+            background: #1f1f21;
+            border: 1px solid #3a3a3a;
             padding: 2px;
             font-size: 14px;
             min-width: 22px;
@@ -300,19 +309,19 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
             min-height: 22px;
             max-height: 22px;
         }
-        QPushButton[text="➕"]:hover { background-color: #22c55e; color: white; }
-        QPushButton[text="➖"]:hover { background-color: #ef4444; color: white; }
+        QPushButton[text="➕"]:hover { background: #22c55e; color: white; }
+        QPushButton[text="➖"]:hover { background: #ef4444; color: white; }
 
         /* === Combo Boxes & Line Edits === */
         QComboBox, QLineEdit, QSpinBox, QDoubleSpinBox {
-            background-color: #1f1f33;
-            border: 1px solid #3c3c5a;
+            background-color: #121212;
+            border: 1px solid #3a3a3a;
             border-radius: 4px;
             padding: 4px 8px;
             color: #d4d4d4;
         }
         QComboBox:hover, QLineEdit:hover {
-            border-color: #6366f1;
+            border-color: #a8a8a8;
         }
         QComboBox::drop-down {
             border: none;
@@ -325,42 +334,43 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
         QCheckBox::indicator {
             width: 16px;
             height: 16px;
-            border: 1px solid #6366f1;
+            border: 1px solid #a8a8a8;
             border-radius: 3px;
-            background-color: #1f1f33;
+            background-color: #121212;
         }
         QCheckBox::indicator:checked {
-            background-color: #6366f1;
+            background-color: #a8a8a8;
             image: url(none);
         }
 
         /* === Tabs === */
         QTabWidget::pane {
-            border: 1px solid #3c3c5a;
+            border: 1px solid #3a3a3a;
             border-radius: 6px;
-            background: #25253a;
+            background: #1a1a1c;
         }
         QTabBar::tab {
-            background: #1f1f33;
+            background: #121212;
             color: #a1a1aa;
             padding: 8px 18px;
             border-top-left-radius: 6px;
             border-top-right-radius: 6px;
         }
         QTabBar::tab:selected {
-            background: #6366f1;
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 #a8a8a8, stop:1 #7a7a7a);
             color: white;
             font-weight: 600;
         }
         QTabBar::tab:hover {
-            background: #3a3a55;
+            background: #2a2a2c;
             color: #e0e0e0;
         }
 
         /* === Text Edit (Config Preview) === */
         QTextEdit {
-            background-color: #1f1f33;
-            border: 1px solid #3c3c5a;
+            background-color: #121212;
+            border: 1px solid #3a3a3a;
             border-radius: 6px;
             font-family: "JetBrains Mono", "Fira Code", monospace;
             font-size: 12px;
@@ -368,12 +378,13 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
 
         /* === Scrollbars === */
         QScrollBar:vertical {
-            background: #1f1f33;
+            background: #121212;
             width: 8px;
             margin: 0;
         }
         QScrollBar::handle:vertical {
-            background: #6366f1;
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 #a8a8a8, stop:1 #7a7a7a);
             min-height: 20px;
             border-radius: 4px;
         }
