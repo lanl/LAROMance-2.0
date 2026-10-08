@@ -77,13 +77,43 @@ args_cli = parser.parse_args()
 # ----------------------------------------------------------------------
 # Load the dataset (and surrogate) based on the provided --pickle_files argument
 # ----------------------------------------------------------------------
+# ----------------------------------------------------------------------
+# Determine which pickle file to load.
+# If the user supplies ``--pickle_files`` we keep the original behaviour –
+# take the first entry of the comma‑separated list.  When the flag is omitted we
+# open a small graphical file‑selection dialog (Tkinter) starting in the
+# ``./references`` folder.  This mirrors the interactive experience used in the
+# GUI‑based training module.  If the environment is headless or the user
+# cancels the dialog we fall back to the historic default ``Test_Data.pickle``.
+# ----------------------------------------------------------------------
 if args_cli.pickle_files:
     # Use the first file from the comma‑separated list, matching the behaviour of the data‑processing utilities.
     file_list = [fn.strip() for fn in args_cli.pickle_files.split(',') if fn.strip()]
     data_filename = file_list[0]
 else:
-    print("No pickle files specified. Using default data file if present (may not exist).")
-    data_filename = 'Test_Data.pickle'
+    try:
+        import tkinter as tk
+        from tkinter import filedialog
+
+        root = tk.Tk()
+        root.withdraw()  # hide the main window
+        initial_dir = os.path.abspath(os.path.join('.', 'references'))
+        selected = filedialog.askopenfilename(
+            title="Select a pickle file for surrogate testing",
+            initialdir=initial_dir,
+            filetypes=[("Pickle files", "*.pickle"), ("All files", "*.*")],
+        )
+        root.update()
+        if selected:
+            data_filename = os.path.basename(selected)
+            print(f"Selected pickle file: {data_filename}")
+        else:
+            print("No file selected – falling back to default Test_Data.pickle.")
+            data_filename = 'Test_Data.pickle'
+    except Exception as e:
+        # Tkinter may fail on headless systems; gracefully use the default.
+        print(f"Unable to open file dialog ({e}); using default Test_Data.pickle.")
+        data_filename = 'Test_Data.pickle'
 
 # Load the selected data pickle
 with open(os.path.join('./references', data_filename), 'rb') as f:

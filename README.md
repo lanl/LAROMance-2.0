@@ -55,12 +55,12 @@ Every stage ships a `CONTEXT.md` that details the stage's workflow, scripts, and
 ```text
 LAROMance-2.0
 |
-├─ 1_Data_Generation            – Generate data (e.g., High‑Fidelity Polycrystal Modeling)
-│   ├─ 11_Generation_Model_Summary   – Read model scripts and input decks
-│   ├─ 12_Design_of_Experiments       – Latin Hypercube Sampling (or your own) and configure the parameter space
-│   └─ 13_Batch_Template_Setup       – Create the template folder, HPC‑bash injection script, and SLURM launch scripts ready for copy‑‑paste to the cluster
+├─ 1_Data_Generation               – Generate data (e.g., High‑Fidelity Polycrystal Modeling)
+│   ├─ 11_Generation_Model_Summary – Read model scripts and input decks
+│   ├─ 12_Design_of_Experiments    – Latin Hypercube Sampling (or your own) and configure the parameter space
+│   └─ 13_Batch_Template_Setup     – Create the template folder, HPC‑bash injection script, and SLURM launch scripts ready for copy‑‑paste to the cluster
 |
-├─ 2_Data_Processing              – Curate, filter, augment, and visualise the data from step 1
+├─ 2_Data_Processing               – Curate, filter, augment, and visualise the data from step 1
 |
 ├─ 3_Surrogate_Modeling            – Build, train, and test a fast surrogate model
 │   ├─ 31_Surrogate_Training          – Use the GUI to train the model; produce training diagnostics/metrics
@@ -69,8 +69,12 @@ LAROMance-2.0
 └─ 4_Port_Moose                    – Export the trained surrogate as a MOOSE material model
 │   ├─ 41_Export_Model             – Uses a MOOSE material file template to fill with the surrogate parameters, and generates a benchmark file with inputs/outputs to test the eventual MOOSE model outputs against.
 │   └─ 42_Analyze_Benchmark_Test   – Manual step: run the MOOSE verification test with the benchmark file (outside of this workflow) and then analyze/plot some results. The difference between benchmark and MOOSE output should approach machine-precision.
+|
+└─5_Clean_Pipeline                 – Clean generated artefacts from previous stages (remove `output` and `references` directories, keep documentation, utils and example data). Run `5_Clean_Pipeline/clean_pipeline.sh` after completing stage 4.2 or when restarting the workflow from an archived copy.
+ 
+    *The utilities are modular; to retarget another FEM/physics solver, replace the template files and add a small wrapper (e.g., new helper functions or classes in `utils/sm_publish.py`) that writes the appropriate input files for the target code.
 
-   *The utilities are modular; to retarget another FEM/physics solver, replace the template files and add a small wrapper (e.g., new helper functions or classes in `utils/sm_publish.py`) that writes the appropriate input files for the target code.
+
 ```
 
 ## How to Use
@@ -81,8 +85,9 @@ The process is modular, so the user can step into any stage, provided data from 
    1. To stay structured, after every step, make sure to inspect output file saved in the current stage's `output` 
    2. and then **move** the output file from the current step's `output` file to the `references` folder of the next step. Like a product in an assembly line, the objects created during each stage move and transform along the pipeline, each stage's `output` becoming the input (`references`) for the next.
 4. After review and moving of any output, proceed to the next stage or step.
+5. Step 5_Clean_Pipeline is optional, but convenient for cleaning all generated files in the pipeline (in the `output` and `references` folders), including any data `.pickle`.
    
->Pro-Tip: Keep one copy of the entire tree per material model, started empty and archived once filled, and do not mix files from different models in one pipeline. Use a fresh (empty) copy of the working tree for each new surrogate model. That way, the folder chain becomes the record of the model build.
+>Pro-Tip: Keep one copy of the entire tree per material model, started empty and archived once filled, and do not mix files from different models in one pipeline. Use a fresh (empty) copy of the working tree for each new surrogate model. That way, the folder chain becomes the record of the model build. Use step 5_Clean_Pipeline to clean your pipeline for a fresh restart.
 
 ## Examples
 
