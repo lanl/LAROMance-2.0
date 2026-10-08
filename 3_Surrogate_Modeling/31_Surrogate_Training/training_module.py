@@ -219,7 +219,7 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
         QWidget {
             background-color: #0f0f0f;
             color: #d4d4d4;
-            font-family: "Segoe UI", "Inter", "Helvetica Neue", Arial, sans-serif;
+            font-family: "DejaVu Sans", "Noto Sans", "Liberation Sans", Arial, Helvetica, sans-serif;
             font-size: 13px;
         }
 
@@ -312,6 +312,22 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
         QPushButton[text="➕"]:hover { background: #22c55e; color: white; }
         QPushButton[text="➖"]:hover { background: #ef4444; color: white; }
 
+        /* Gear (⚙) buttons for scaler settings */
+        QPushButton[text="⚙"] {
+            background: #1f1f21;
+            border: 1px solid #3a3a3a;
+            padding: 0px;
+            font-size: 16px;
+            min-width: 26px;
+            max-width: 26px;
+            min-height: 26px;
+            max-height: 26px;
+        }
+        QPushButton[text="⚙"]:hover {
+            background: #3a3a3c;
+            border-color: #a8a8a8;
+        }
+
         /* === Combo Boxes & Line Edits === */
         QComboBox, QLineEdit, QSpinBox, QDoubleSpinBox {
             background-color: #121212;
@@ -325,6 +341,64 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
         }
         QComboBox::drop-down {
             border: none;
+        }
+
+        /* Spinbox arrows (up/down) */
+        QSpinBox::up-button, QDoubleSpinBox::up-button,
+        QSpinBox::down-button, QDoubleSpinBox::down-button {
+            subcontrol-origin: border;
+            background: #1f1f21;
+            border: 1px solid #3a3a3a;
+            width: 16px;
+        }
+        QSpinBox::up-button:hover, QDoubleSpinBox::up-button:hover,
+        QSpinBox::down-button:hover, QDoubleSpinBox::down-button:hover {
+            background: #3a3a3c;
+            border-color: #a8a8a8;
+        }
+
+        /* Spinbox arrows (up/down) */
+        QSpinBox::up-button, QDoubleSpinBox::up-button,
+        QSpinBox::down-button, QDoubleSpinBox::down-button {
+            subcontrol-origin: border;
+            background: #1f1f21;
+            border: 1px solid #3a3a3a;
+            width: 16px;
+        }
+        QSpinBox::up-button:hover, QDoubleSpinBox::up-button:hover,
+        QSpinBox::down-button:hover, QDoubleSpinBox::down-button:hover {
+            background: #3a3a3c;
+            border-color: #a8a8a8;
+        }
+
+
+        /* Spinbox arrows (up/down) */
+        QSpinBox::up-button, QDoubleSpinBox::up-button,
+        QSpinBox::down-button, QDoubleSpinBox::down-button {
+            subcontrol-origin: border;
+            background: #1f1f21;
+            border: 1px solid #3a3a3a;
+            width: 16px;
+        }
+        QSpinBox::up-button:hover, QDoubleSpinBox::up-button:hover,
+        QSpinBox::down-button:hover, QDoubleSpinBox::down-button:hover {
+            background: #3a3a3c;
+            border-color: #a8a8a8;
+        }
+
+
+        /* Spinbox arrows (up/down) */
+        QSpinBox::up-button, QDoubleSpinBox::up-button,
+        QSpinBox::down-button, QDoubleSpinBox::down-button {
+            subcontrol-origin: border;
+            background: #1f1f21;
+            border: 1px solid #3a3a3a;
+            width: 16px;
+        }
+        QSpinBox::up-button:hover, QDoubleSpinBox::up-button:hover,
+        QSpinBox::down-button:hover, QDoubleSpinBox::down-button:hover {
+            background: #3a3a3c;
+            border-color: #a8a8a8;
         }
 
         /* === Checkboxes === */
@@ -706,7 +780,7 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
         dialog.setLayout(layout)
         
         # Execute dialog
-        if dialog.exec_() == QtWidgets.QDialog.Accepted:
+        if dialog.exec() == QtWidgets.QDialog.Accepted:
             try:
                 # Get values
                 save_path = file_path.text()
@@ -883,7 +957,7 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
         format_combo.currentIndexChanged.connect(update_dpi_visibility)
         
         # Show dialog
-        if dialog.exec_() != QtWidgets.QDialog.Accepted:
+        if dialog.exec() != QtWidgets.QDialog.Accepted:
             return
             
         # Get selected options
@@ -1050,7 +1124,7 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
     
     def open_mesh_settings_dialog(self):
         dlg = MeshSettingsDialog(self, self.input_keys)
-        if dlg.exec_() == QtWidgets.QDialog.Accepted:
+        if dlg.exec() == QtWidgets.QDialog.Accepted:
             region, configs = dlg.get_refinement_settings()
             if region and configs:
                 self.mesh_specs["refinement_region"] = region
@@ -1561,7 +1635,7 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
 
         dialog.setLayout(layout)
 
-        if dialog.exec_() == QtWidgets.QDialog.Accepted:
+        if dialog.exec() == QtWidgets.QDialog.Accepted:
             try:
                 new_min = float(min_input.text())
                 new_max = float(max_input.text())
@@ -1658,7 +1732,7 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
         dialog.setLayout(layout)
         
         # If dialog is accepted, update the text
-        if dialog.exec_() == QtWidgets.QDialog.Accepted:
+        if dialog.exec() == QtWidgets.QDialog.Accepted:
             new_text = text_edit.text()
             text_obj.set_text(new_text)
             text_obj.figure.canvas.draw()
@@ -1967,7 +2041,7 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
         current_config = self.args.get(map_key, {}).get(var_name, {}).get(scaler_type, {})
 
         dialog = ScalerSettingsDialog(var_name, scaler_type, current_config)
-        if dialog.exec_():
+        if dialog.exec():
             updated_config = dialog.get_config()
             if map_key not in self.args:
                 self.args[map_key] = {}
@@ -2120,7 +2194,7 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
             upper = current_config.get("upperbound", None)
 
         dialog = BoundsSettingsDialog(var_name, lower, upper)
-        if dialog.exec_():
+        if dialog.exec():
             lower_val, upper_val = dialog.get_bounds()
             if "constrain_regression" not in self.args:
                 self.args["constrain_regression"] = {}
@@ -2271,7 +2345,7 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
             # This allows users to type any string that Python's float() can parse,
             # including exponential notation such as "1e-9".
             dlg = MeshSettingsDialog.MissingColumnsDialog("\n".join(missing_info), parent=self)
-            if dlg.exec_() == QtWidgets.QDialog.Accepted:
+            if dlg.exec() == QtWidgets.QDialog.Accepted:
                 try:
                     fill_value = float(dlg.get_fill_value())
                 except ValueError:
@@ -4104,7 +4178,7 @@ class MeshSettingsDialog(QtWidgets.QDialog):
                         missing_info.append(f"  - {col}")
 
                 dlg = self.MissingColumnsDialog("\n".join(missing_info), parent=self)
-                if dlg.exec_() == QtWidgets.QDialog.Accepted:
+                if dlg.exec() == QtWidgets.QDialog.Accepted:
                     try:
                         fill_value = float(dlg.get_fill_value())
                     except ValueError:
@@ -4236,4 +4310,4 @@ if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)
     window = SurrogateModelApp()
     window.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())
