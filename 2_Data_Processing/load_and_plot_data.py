@@ -79,6 +79,84 @@ parser.add_argument('--concat', action='store_true',
 parser.add_argument('--pickle_files', type=str, default=None,
     help='Comma‑separated list of pickle files (relative to the references folder) to load and merge.')
 args = parser.parse_args()
+
+# ----------------------------------------------------------------------
+# Determine which pickle files to load
+# ----------------------------------------------------------------------
+datasets = []
+if args.pickle_files:
+    file_list = [fn.strip() for fn in args.pickle_files.split(',') if fn.strip()]
+else:
+    # No files provided via CLI → open an interactive file picker
+    try:
+        import tkinter as tk
+        from tkinter import filedialog
+
+        root = tk.Tk()
+        root.withdraw()                      # hide the root window
+        root.attributes('-topmost', True)    # bring dialog to front
+
+        selected = filedialog.askopenfilenames(
+            title="Select one or more pickle files",
+            initialdir=data_path,
+            filetypes=[("Pickle files", "*.pickle *.pkl"), ("All files", "*")]
+        )
+        root.destroy()
+
+        if selected:
+            file_list = [os.path.basename(p) for p in selected]
+        else:
+            print("No files selected. Falling back to default 'data.pickle'.")
+            file_list = ['data.pickle']
+    except Exception as e:
+        print(f"Could not open file dialog ({e}). Falling back to default 'data.pickle'.")
+        file_list = ['data.pickle']
+for fn in file_list:
+    full_path = os.path.join(data_path, fn)
+    print(f"Loading data from {full_path} ...")
+    with open(full_path, "rb") as f:
+        datasets.append(pickle.load(f))
+
+# Merge if multiple files provided
+if len(datasets) == 1:
+    DATA = datasets[0]
+else:
+    merged_data = {}
+    merged_sim_lengths = []
+    id_offset = 0
+    for d in datasets:
+        data_dict = d["data"]
+        meta = d.get("meta_data", {})
+        sim_lengths = meta.get("sim_lengths", [len(v["t"]) for v in data_dict.values()])
+        for old_id, sim in data_dict.items():
+            new_id = old_id + id_offset
+            merged_data[new_id] = sim
+        merged_sim_lengths.extend(sim_lengths)
+        if merged_data:
+            id_offset = max(merged_data.keys()) + 1
+    merged_meta = {
+        "sim_lengths": merged_sim_lengths,
+        "job_number": list(range(len(merged_data))),
+    }
+    DATA = {"data": merged_data, "meta_data": merged_meta}
+
+# ----------------------------------------------------------------------
+# Brief dataset summary (shown immediately after loading)
+# ----------------------------------------------------------------------
+data_dict = DATA["data"]
+first_sim = next(iter(data_dict.values()))
+input_vars = [k for k in first_sim.keys() if k not in ("U", "x")]
+output_vars = list(first_sim.get("U", {}).keys())
+n_sims = len(data_dict)
+
+print("\n" + "="*60)
+print("DATASET SUMMARY")
+print("="*60)
+print(f"Number of simulations : {n_sims}")
+print(f"Input variables       : {input_vars}")
+print(f"Output variables (U)  : {output_vars}")
+print("="*60 + "\n")
+
 # Prompt for input and output variable keys if not supplied via CLI
 if not args.input_keys:
     inp = input("\nEnter input variable keys for plots (comma-separated) or press Enter for defaults: ").strip()
@@ -130,29 +208,10 @@ if not args.concat:
         args.concat = False
 
 # ----------------------------------------------------------------------
-# Load and optionally merge pickle files now that command‑line arguments have
-# been processed.  This replaces the original single‑file loading that occurred
-# at the top of the script.
+# The data has already been loaded above (with optional interactive picker).
+# If multiple files were selected we still need to merge them here.
 # ----------------------------------------------------------------------
-# ``data_path`` points to the ``references`` directory (defined near the top).
-datasets = []
-if args.pickle_files:
-    file_list = [fn.strip() for fn in args.pickle_files.split(',') if fn.strip()]
-else:
-    # Preserve original behaviour – load the single default file.
-    file_list = [
-        'data.pickle',
-    ]
-for fn in file_list:
-    full_path = os.path.join(data_path, fn)
-    print(f"Loading data from {full_path} ...")
-    with open(full_path, "rb") as f:
-        datasets.append(pickle.load(f))
-
-# Merge datasets if more than one was provided.
-if len(datasets) == 1:
-    DATA = datasets[0]
-else:
+if len(datasets) > 1:
     merged_data = {}
     merged_sim_lengths = []
     id_offset = 0
@@ -172,7 +231,29 @@ else:
     }
     DATA = {"data": merged_data, "meta_data": merged_meta}
 
-# NOTE: Data loading and merging now occurs after argument parsing (see later in the file).
+# ----------------------------------------------------------------------
+# Brief dataset summary (shown immediately after loading)
+# ----------------------------------------------------------------------
+data_dict = DATA["data"]
+
+# Pick the first simulation to inspect its structure
+first_sim = next(iter(data_dict.values()))
+
+# Input variables = everything except the nested 'U' and 'x'
+input_vars = [k for k in first_sim.keys() if k not in ("U", "x")]
+
+# Output variables live inside the nested 'U' dictionary
+output_vars = list(first_sim.get("U", {}).keys())
+
+n_sims = len(data_dict)
+
+print("\n" + "=" * 60)
+print("DATASET SUMMARY")
+print("=" * 60)
+print(f"  Simulations found   : {n_sims}")
+print(f"  Input variables     : {input_vars}")
+print(f"  Output variables (U): {output_vars}")
+print("=" * 60 + "\n")
 # Extract convenience references and print basic information about the loaded data
 # ----------------------------------------------------------------------
 data = DATA["data"]
