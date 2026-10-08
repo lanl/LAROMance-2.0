@@ -3,3 +3,4 @@ train_output.pickle
 SM.pickle
 __pycache__
 .DS_Store
+commands
