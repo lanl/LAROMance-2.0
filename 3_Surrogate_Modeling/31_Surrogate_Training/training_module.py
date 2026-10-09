@@ -1303,33 +1303,8 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
             self.add_output_cb()
 
 
-    # def save_state(self):
-    #     try:
-    #         state = {
-    #             "roi": self.roi,
-    #             "plot_2d_mode": self.plot_2d_mode,
-    #             "inputs": [],
-    #             "outputs": [cb.currentText() for cb, _, _, _ in self.output_var_cbs],
-    #             "mesh_specs": self.mesh_specs,
-    #             "args": self.args,
-    #         }
 
-    #         for cb, elem_input, tri_cb, plot_cb, map_dropdown, scaler_btn in self.input_var_widgets:
-    #             state["inputs"].append({
-    #                 "key": cb.currentText(),
-    #                 "elements": elem_input.text(),
-    #                 "tri": tri_cb.isChecked(),
-    #                 "plot": plot_cb.isChecked(),
-    #                 "mapping": map_dropdown.currentText()
-    #             })
-
-    #         with open(self.state_file, "w") as f:
-    #             json.dump(state, f, indent=2)
-    #         print("State saved.")
-    #     except Exception as e:
-    #         print(f"Error saving state: {e}")
-
-    # ENHANCED: Save complete transform settings
+    # Save complete transform settings
     def save_state(self):
         try:
             state = {
@@ -2664,25 +2639,26 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
                 print("Warning: Not enough dimensions selected for plotting. Using first two dimensions.")
 
             # Filter dimensions to those present in mesh_specs
-            valid_dims = [d for d in selected_dims if d in self.mesh_specs.get('element_numbers', {})]
-            if len(valid_dims) < 2:
-                valid_dims = list(self.mesh_specs.get('element_numbers', {}).keys())[:2]
-                print("Warning: Selected dimensions not all present in mesh element_numbers. Using available dimensions:", valid_dims)
+            base_dims = [d for d in selected_dims if d in self.mesh_specs.get('element_numbers', {})]
+            if len(base_dims) < 2:
+                base_dims = list(self.mesh_specs.get('element_numbers', {}).keys())[:2]
+                print("Warning: Selected dimensions not all present in mesh element_numbers. Using available dimensions:", base_dims)
+            stack_dims = [d for d in self.mesh_specs.get('element_numbers', {}) if d not in base_dims]
 
             # Build a 2‑D mesh spec copy using only valid dimensions
             mesh_specs_2d = copy.deepcopy(self.mesh_specs)
             mesh_specs_2d['element_numbers'] = {
-                k: self.mesh_specs['element_numbers'][k] for k in valid_dims
+                k: self.mesh_specs['element_numbers'][k] for k in base_dims
             }
             if 'mesh_distribution' in mesh_specs_2d:
                 mesh_specs_2d['mesh_distribution'] = {
                     k: v for k, v in mesh_specs_2d['mesh_distribution'].items()
-                    if k in valid_dims
+                    if k in base_dims
                 }
 
             # Construct ROI subset matching valid dimensions
             roi_subset = {}
-            for dim in valid_dims:
+            for dim in base_dims:
                 if isinstance(self.roi, dict) and dim in self.roi:
                     roi_subset[dim] = self.roi[dim]
                 else:
@@ -2693,21 +2669,21 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
                         raise KeyError(f"Cannot determine bounds for dimension '{dim}'")
             # Ensure ROI ranges are non‑zero to avoid Qhull precision issues.
             # If a dimension has an extremely small range (or is flat), expand it slightly.
-            epsilon = 1e-8
-            for d, bounds in roi_subset.items():
-                if abs(bounds[1] - bounds[0]) < epsilon:
-                    mid = (bounds[0] + bounds[1]) / 2.0
-                    roi_subset[d] = [mid - epsilon/2.0, mid + epsilon/2.0]
-                print(f"ROI used for mesh preview: {roi_subset}")
+            # epsilon = 1e-8
+            # for d, bounds in roi_subset.items():
+            #     if abs(bounds[1] - bounds[0]) < epsilon:
+            #         mid = (bounds[0] + bounds[1]) / 2.0
+            #         roi_subset[d] = [mid - epsilon/2.0, mid + epsilon/2.0]
+            #     print(f"ROI used for mesh preview: {roi_subset}")
 
             # Rebuild mesh
             if len(self.mesh_specs['tri_elements']) > 0:
-                nodes, conn = fes.build_simplex_extrusion_nd(mesh_specs_2d, roi_subset)
+                nodes, conn = fes.build_simplex_extrusion_nd(mesh_specs_2d, roi_subset, dim_names=base_dims)
                 highlight_elements = fes.data_density_in_element_2d_simplex(
                     self.data['data'], nodes, conn, mesh_specs_2d, verbose=False
                 )
             else:
-                nodes, conn = fes.build_hypercube_mesh(mesh_specs_2d, roi_subset)
+                nodes, conn = fes.build_hypercube_mesh(mesh_specs_2d, roi_subset, dim_names=base_dims)
                 highlight_elements = fes.data_density_in_element_2d_hypercube(
                     self.data['data'], nodes, conn, mesh_specs_2d, verbose=False,
                     min_points=self.mesh_specs['mesh_filtering']['density_thresh']
@@ -2720,6 +2696,8 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
             self.mesh_specs['premade_mesh']['conn'] = conn.tolist()
             self.highlight_elements = highlight_elements
             self.mesh_specs['mesh_filtering']['highlight_elements'] = highlight_elements
+            self.mesh_specs['premade_mesh']['base_dims'] = list(base_dims)   # ← the two Plot-selected vars
+            self.mesh_specs['premade_mesh']['stack_dims'] = list(stack_dims)   # ← the remaining vars
 
             # Ensure canvas exists
             if not self.data_canvas_2d:
@@ -3317,6 +3295,22 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
                 existing_config = self.args.get("map_input", {}).get(key, {}).get(selected_scaler, {}) if hasattr(self, "args") else {}
                 map_input[key] = {selected_scaler: existing_config}
 
+        # Re-order map_input to match the mesh ordering:
+        # first the two Plot-selected base dimensions, then the remaining stack dimensions
+        base_dims = self.mesh_specs.get('premade_mesh', {}).get('base_dims', [])
+        stack_dims = self.mesh_specs.get('premade_mesh', {}).get('stack_dims', [])
+        ordered_keys = list(base_dims) + list(stack_dims)
+        if ordered_keys:
+            ordered_map = {}
+            for k in ordered_keys:
+                if k in map_input:
+                    ordered_map[k] = map_input[k]
+            for k in map_input:
+                if k not in ordered_map:
+                    ordered_map[k] = map_input[k]
+            map_input = ordered_map
+        
+
         # Set default range for minmax scalers if missing
         for key, scalers in map_input.items():
             if "minmax" in scalers:
@@ -3394,9 +3388,12 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
         # === Initialize premade_mesh placeholder ===
         if "premade_mesh" not in self.mesh_specs:
             self.mesh_specs["premade_mesh"] = {"nodes": None, "conn": None}
+        else:
+            self.mesh_specs["premade_mesh"]["ordered_key"] = ordered_keys
 
         # Preserve existing data_file if present in args
         existing_data_file = self.args.get("data_file") if hasattr(self, "args") else None
+
 
         # Update args while preserving keys not overwritten here
         new_args = {
@@ -3555,7 +3552,7 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
             return
 
         # --- Multi-variable: add two canvases ---
-        var1, var2 = input_vars[:2]
+        var1, var2 = self.mesh_specs["premade_mesh"]["ordered_key"][:2]
 
         # Page 1: 2D Scatter and Mesh
         fig1 = Figure(figsize=(6, 5))

@@ -1263,9 +1263,14 @@ def extrude_premade_hypercube_mesh_to_nd(mesh_specs, roi):
     """
     dim_names = list(mesh_specs['element_numbers'].keys())
 
-    # Infer base dimensions from node shape (e.g. 2D)
-    ndim_base = np.array(mesh_specs['premade_mesh']['nodes']).shape[1]
-    stack_dims = dim_names[ndim_base:]
+    base_dims = mesh_specs['premade_mesh'].get('base_dims')
+    stack_dims = mesh_specs['premade_mesh'].get('stack_dims')
+
+    if base_dims is None:
+        # fallback for old files that only ever used the first two dims
+        ndim_base = np.array(mesh_specs['premade_mesh']['nodes']).shape[1]
+        base_dims = dim_names[:ndim_base]
+        stack_dims = [d for d in dim_names if d not in base_dims]
 
     # --- Load base mesh ---
     base_nodes = np.array(mesh_specs['premade_mesh']['nodes'])  # (Nnodes, ndim_base)

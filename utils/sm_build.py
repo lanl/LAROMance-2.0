@@ -185,6 +185,8 @@ def sm_train(roi: dict, mesh_specs: dict, args : dict, DATA : dict = None, data_
         ndim_base = np.array(mesh_specs['premade_mesh']['nodes']).shape[1]
         ndim_target = len(mesh_specs['element_numbers'])
 
+        print(f"--> ndim_target: {ndim_target}, ndim_base: {ndim_base}")
+
         if ndim_target > ndim_base:
             if mesh_specs.get("tri_elements", []):
                 print(f"\nExtrude the premade {ndim_base}D triangular mesh into {ndim_target - ndim_base} higher dimensions...")
@@ -192,6 +194,11 @@ def sm_train(roi: dict, mesh_specs: dict, args : dict, DATA : dict = None, data_
             else:
                 print(f"\nExtrude the premade {ndim_base}D quad mesh into {ndim_target - ndim_base} higher dimensions...")
                 nodes, conn = fes.extrude_premade_hypercube_mesh_to_nd(mesh_specs, roi)
+                # debug prints:
+                print(mesh_specs['premade_mesh']['nodes'])
+                print("nodes[:,0] min : {}, max :{}".format(nodes[:,0].min(), nodes[:,0].max()))
+                print("nodes[:,1] min : {}, max :{}".format(nodes[:,1].min(), nodes[:,1].max()))
+                print("nodes[:,2] min : {}, max :{}".format(nodes[:,2].min(), nodes[:,2].max()))
         else:
             print("\nLoad 2D premade mesh (no extrusion needed)")
             nodes = np.array(mesh_specs['premade_mesh']['nodes'])
@@ -243,6 +250,9 @@ def sm_train(roi: dict, mesh_specs: dict, args : dict, DATA : dict = None, data_
         print("\nTransform nodal coordinates.")
         sys.stdout.flush()
         nodes = smd.transform_nodes(nodes, SM['input_maps'])
+    
+    # debug prints
+    print("nodes: {}".format(nodes))
 
     # store mesh in SM dict
     SM['roi'] = roi
