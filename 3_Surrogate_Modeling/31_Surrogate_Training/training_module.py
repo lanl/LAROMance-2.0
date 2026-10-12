@@ -3370,6 +3370,23 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
             self.roi = self.get_roi_from_inputs(input_vars, self.data)
 
 
+        # === Canonical dimension ordering ===
+        # Node columns are laid out as base_dims + stack_dims. Reorder
+        # element_numbers, mesh_distribution and roi to the same order so that
+        # dim_names = list(element_numbers.keys()) matches node columns everywhere.
+        if ordered_keys:
+            def _reorder(d):
+                reordered = {k: d[k] for k in ordered_keys if k in d}
+                for k in d:
+                    if k not in reordered:
+                        reordered[k] = d[k]
+                return reordered
+
+            elements = _reorder(elements)
+            mesh_distribution = _reorder(mesh_distribution)
+            if isinstance(self.roi, dict):
+                self.roi = _reorder(self.roi)
+
         # (Update dict preview if requested)
         if update_text:
             self.update_dict_preview()
@@ -3388,8 +3405,12 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
         # === Initialize premade_mesh placeholder ===
         if "premade_mesh" not in self.mesh_specs:
             self.mesh_specs["premade_mesh"] = {"nodes": None, "conn": None}
-        else:
-            self.mesh_specs["premade_mesh"]["ordered_key"] = ordered_keys
+        # Store the canonical ordering unconditionally so downstream consumers
+        # (plots, extrusion, export) can rely on it.
+        self.mesh_specs["premade_mesh"]["ordered_key"] = ordered_keys
+        if ordered_keys:
+            self.mesh_specs["premade_mesh"]["base_dims"] = list(base_dims)
+            self.mesh_specs["premade_mesh"]["stack_dims"] = list(stack_dims)
 
         # Preserve existing data_file if present in args
         existing_data_file = self.args.get("data_file") if hasattr(self, "args") else None
@@ -3570,13 +3591,20 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
         #     norm=mcolors.LogNorm(vmin=1e-1, vmax=1e2), s=10
         # )
         
-        triang = tri.Triangulation(DATA2['data'][var1], DATA2['data'][var2])
-        
-        cf = ax1.tricontourf(triang, rel_err,
-                            levels=np.logspace(-1, 2, 50),
-                            cmap=self.current_cmap,
-                            norm=mcolors.LogNorm(vmin=1e-1, vmax=1e2),
-                            extend='both')
+        # Delaunay triangulation can fail (qhull error) when the chosen base
+        # dimensions are degenerate (e.g. a variable with (near-)constant or
+        # collinear values). Guard it and fall back to a scatter-only plot.
+        try:
+            triang = tri.Triangulation(DATA2['data'][var1], DATA2['data'][var2])
+            cf = ax1.tricontourf(triang, rel_err,
+                                levels=np.logspace(-1, 2, 50),
+                                cmap=self.current_cmap,
+                                norm=mcolors.LogNorm(vmin=1e-1, vmax=1e2),
+                                extend='both')
+        except (RuntimeError, ValueError) as e:
+            print(f"Warning: triangulation failed for ({var1}, {var2}): {e}. "
+                  f"Showing scatter only.")
+            cf = None
 
         # Overlay original points (helps see where real data is)
         sc1 = ax1.scatter(DATA2['data'][var1], DATA2['data'][var2],
@@ -3765,6 +3793,26 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
         if self.data is None:
             QtWidgets.QMessageBox.warning(self, "No Data", "Please load a dataset first.")
             return
+
+        # Ensure base_dims/stack_dims are populated before build_dicts, so the
+        # canonical ordering is derived even if the mesh preview was never run.
+        if "premade_mesh" not in self.mesh_specs:
+            self.mesh_specs["premade_mesh"] = {"nodes": None, "conn": None}
+        if not self.mesh_specs["premade_mesh"].get("base_dims"):
+            selected_inputs = [w for w in self.input_var_widgets
+                               if w[3].isChecked() and w[0].currentText()]
+            all_input_keys = [w[0].currentText() for w in self.input_var_widgets
+                              if w[0].currentText()]
+            if len(selected_inputs) >= 2:
+                base_dims = [selected_inputs[0][0].currentText(),
+                             selected_inputs[1][0].currentText()]
+            else:
+                base_dims = all_input_keys[:2]
+                print("Warning: fewer than 2 Plot-selected inputs; "
+                      "using first two inputs as base dimensions.")
+            stack_dims = [k for k in all_input_keys if k not in base_dims]
+            self.mesh_specs["premade_mesh"]["base_dims"] = list(base_dims)
+            self.mesh_specs["premade_mesh"]["stack_dims"] = list(stack_dims)
 
         self.build_dicts(update_text=True)
 

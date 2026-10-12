@@ -262,7 +262,7 @@ def visualize_mesh(node, conn=None, dim=2, scalers=None, highlight_elements=[], 
 
                 # Draw edges
                 for edge in edges:
-                    p1, p2 = coords[edge]
+                    p1, p2 = coords[edge[0]], coords[edge[1]]
                     line_artist, = ax.plot([p1[0], p2[0]], [p1[1], p2[1]], color=edge_color, lw=0.7)
                     artists.append(line_artist)
 

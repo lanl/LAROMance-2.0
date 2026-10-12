@@ -5,14 +5,15 @@ Developers: Andre Ruybalid, Laurent Capolungo  (Los Alamos National Laboratory 
 Author: Andre Ruybalid | andreruybalid@gmail.com*
 
 ---
+*LAROMance: Los Alamos Reduced Order Model for Advanced Nonlinear Constitutive Equations.*
 
-Welcome to the **LAROMance 2.0** codebase: an end‑to‑end, modular pipeline that **generates**, **curates**, and **cleans** high‑dimensional, nonlinear time‑series data, e.g., thousands of tensile‑simulation stress‑strain curves (time histories) generated from varying input/model parameters, then builds **ultra‑fast surrogate models** to capture complex multi‑variable relationships. Although this workflow (developed at Los Alamos National Laboratory) is not restricted to any particular simulation framework, it was originally designed for creep modeling in **MOOSE** and **BISON**, supporting nuclear‑fuel‑system performance analysis [1]. By compressing heavyweight high‑fidelity simulations into quick surrogates, LAROMance delivers turnkey material‑behavior predictions for safety‑critical scenarios (nuclear accidents, aerospace loading, etc.) with **~1000× speed‑ups**. The repo ships with exemplary synthetic datasets, located in `./examples/`, and a ready‑to‑run training GUI.
+Welcome to the **LAROMance 2.0** codebase: an end‑to‑end, physics-AI pipeline that **generates**, **curates**, and **cleans** high‑dimensional, nonlinear time‑series data, e.g., thousands of tensile‑simulation stress‑strain curves (time histories) generated from varying input/model parameters, then builds **ultra‑fast surrogate models** to capture complex multi‑variable relationships. Although this workflow (developed at Los Alamos National Laboratory) is not restricted to any particular simulation framework, it was originally designed for creep modeling in **MOOSE** and **BISON**, supporting nuclear‑fuel‑system performance analysis [1]. By compressing heavyweight high‑fidelity simulations into quick surrogates, LAROMance delivers turnkey material‑behavior predictions for safety‑critical scenarios (nuclear accidents, aerospace loading, etc.) with **~1000× speed‑ups**. The repo ships with exemplary synthetic datasets, located in `./examples/`, and a ready‑to‑run training GUI.
 
 [1] A.P. Ruybalid *et al.*, *Ann. Nucl. Energy* **2026**, [DOI:10.1016/j.anucene.2026.112681](https://doi.org/10.1016/j.anucene.2026.112681)  
 
  > **Want the math & training details?** Check out [LAROMANCE_USER_MANUAL.pdf](3_Surrogate_Modeling/31_Surrogate_Training/doc/LAROMANCE_USER_MANUAL.pdf) for the full technical training module manual and its info sections.
 
-*LAROMance: Los Alamos Reduced Order Model for Advanced Nonlinear Constitutive Equations.*
+*This repo's "main" branch is stable. The "devel" branch is for developers and may break in-between commits. Users are advised to work with "main".*
 
 ## Installation
 
