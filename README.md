@@ -1,13 +1,14 @@
-## LAROMance 2.0 – Fast, Flexible, Surrogate Modeling Workflow for Nonlinear Constitutive Equations
+## LAROMance 2.0 – Fast, Flexible, Surrogate Modeling Workflow for Nonlinear Time-Series Data
+*"LAROMance": Los Alamos Reduced Order Model for Advanced Nonlinear Constitutive Equations.*
+
 *Release O# O5190  
 Date: October 3rd 2026  
 Developers: Andre Ruybalid, Laurent Capolungo  (Los Alamos National Laboratory | New Mexico, USA)  
 Author: Andre Ruybalid | andreruybalid@gmail.com*
 
 ---
-*LAROMance: Los Alamos Reduced Order Model for Advanced Nonlinear Constitutive Equations.*
 
-Welcome to the **LAROMance 2.0** codebase: an end‑to‑end, physics-AI pipeline that **generates**, **curates**, and **cleans** high‑dimensional, nonlinear time‑series data, e.g., thousands of tensile‑simulation stress‑strain curves (time histories) generated from varying input/model parameters, then builds **ultra‑fast surrogate models** to capture complex multi‑variable relationships. Although this workflow (developed at Los Alamos National Laboratory) is not restricted to any particular simulation framework, it was originally designed for creep modeling in **MOOSE** and **BISON**, supporting nuclear‑fuel‑system performance analysis [1]. By compressing heavyweight high‑fidelity simulations into quick surrogates, LAROMance delivers turnkey material‑behavior predictions for safety‑critical scenarios (nuclear accidents, aerospace loading, etc.) with **~1000× speed‑ups**. The repo ships with exemplary synthetic datasets, located in `./examples/`, and a ready‑to‑run training GUI.
+Welcome to the **LAROMance 2.0** codebase: an end‑to‑end, physics-AI pipeline that **generates**, **cleans** and **curates** high‑dimensional, nonlinear time‑series data, e.g., thousands of tensile‑simulation stress‑strain curves (time-histories) generated from varying input/model parameters, then builds **ultra‑fast surrogate models** to capture complex multi‑variable relationships. Although this workflow (developed at Los Alamos National Laboratory) is not restricted to any particular simulation framework, it was originally designed for creep modeling in **MOOSE** and **BISON**, supporting nuclear‑fuel‑system performance analysis [1]. By compressing heavyweight high‑fidelity simulations into quick surrogates, LAROMance delivers turnkey material‑behavior predictions for safety‑critical scenarios (nuclear accidents, aerospace loading, etc.) with **~1000× speed‑ups**. The repo ships with exemplary synthetic datasets, located in `./examples/`, and a ready‑to‑run training GUI.
 
 [1] A.P. Ruybalid *et al.*, *Ann. Nucl. Energy* **2026**, [DOI:10.1016/j.anucene.2026.112681](https://doi.org/10.1016/j.anucene.2026.112681)  
 
@@ -91,6 +92,22 @@ The process is modular, so the user can step into any stage, provided data from 
    
 >Pro-Tip: Keep one copy of the entire tree per material model, started empty and archived once filled, and do not mix files from different models in one pipeline. Use a fresh (empty) copy of the working tree for each new surrogate model. That way, the folder chain becomes the record of the model build. Use step 5_Clean_Pipeline to clean your pipeline for a fresh restart.
 
+## Quick Start
+
+New to LAROMance? Run the whole pipeline end-to-end against the shipped
+Viscoplasticity/Creep example with a single command:
+
+```bash
+cd 0_Demo_Test
+python run_test_demo.py --demo
+```
+
+This guided demo walks you through every stage (1 → 5), narrating the *why*
+behind each step and keeping all generated artifacts so you can explore them
+afterwards. For a quick, non-interactive health check use
+`python run_test_demo.py --test`. See [0_Demo_Test/CONTEXT.md](0_Demo_Test/CONTEXT.md)
+for details.
+
 ## Examples
 
 Below are brief pointers to the example folders that illustrate how to use each
@@ -98,13 +115,18 @@ stage of the pipeline.  Detailed usage instructions are provided in the
 `README.md` files inside those folders.
 
 * **Viscoplastic‑Creep data** – Located in [examples/Viscoplasicity_Creep](examples/Viscoplasicity_Creep). The README explains how to load the 5,000‑strong creep simulation data `.pickle` into the `2_Data_Processing` step and then open the Training Module in `31_Surrogate_Training`, test its performance in `32_Surrogate_Testing`, and finally, create the MOOSE material model files (__MOOSE__ is a multi-physics FEM-framework widely used by the nuclear engineerin community). 
-  > Tip: run the pipeline from stage 2 on the creep example (5 k sims) to see everything in action
+  > Tip: run the entire pipeline in 0_Demo_Test. Follow the CONTEXT.md to run the python script through the entire pipeline, using this example dataset.
 * **Training‑Module practice data** – Found in [examples/Training_Module](examples/Training_Module).  This folder contains small synthetic datasets meant solely for exploring the GUI of the Training Modulein `31_Surrogate_Training`.  See its README for more info.
 * There is currently no dummy data generator model for stage **1-Data Generation** for testing or as example. 
 
 
 ## Limitations
 This workflow is documented for the intended four-step path. Scripts and utilies are thin wrappers and can break if intputs, file layouts, or call order differ from what the CONTEXT.md files describe. It is not a hardened library: edge cases, unusual model design, and non-standard data shapes are not fully guarded. Treat this README.md and CONTEXT.md files within each stage as the supported interface, and adjust the utilities if your case falls outside that path. 
+
+## Contributing & Support
+If this workflow is useful to you, a **GitHub star** on the repository is genuinely appreciated and helps others discover the project. Please also **reference this repository** in any work that builds on it.
+
+**Forks are welcome** for those who wish to develop, extend, or adapt the pipeline to their own material models. If you have **ideas, suggestions, or questions**, they are welcome via the email address provided at the top of this README (Andre Ruybalid | andreruybalid@gmail.com).
 
 ##  Software Notice
 © 2026. Triad National Security, LLC. All rights reserved.

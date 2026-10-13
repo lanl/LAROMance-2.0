@@ -3,8 +3,17 @@
 """
 © 2026. Triad National Security, LLC. All rights reserved.
 
-This program was produced under U.S. Government contract 89233218CNA000001 for Los Alamos National Laboratory (LANL), which is operated by Triad National Security, LLC for the U.S. Department of Energy/National Nuclear Security Administration. All rights in the program are reserved by Triad National Security, LLC, and the U.S. Department of Energy/National Nuclear Security Administration. The Government is granted for itself and others acting on its behalf a nonexclusive, paid-up, irrevocable worldwide license in this material to reproduce, prepare. derivative works, distribute copies to the public, perform publicly and display publicly, and to permit others to do so. 
 
+This program was produced under U.S. Government contract 89233218CNA000001
+for Los Alamos National Laboratory (LANL), which is operated by Triad
+National Security, LLC for the U.S. Department of Energy/National Nuclear
+Security Administration. All rights in the program are reserved by Triad
+National Security, LLC, and the U.S. Department of Energy/National Nuclear
+Security Administration. The Government is granted for itself and others
+acting on its behalf a nonexclusive, paid-up, irrevocable worldwide license
+in this material to reproduce, prepare derivative works, distribute copies
+to the public, perform publicly and display publicly, and to permit others
+to do so.
 ==============================================================================================================
 
 @author: Andre Ruybalid
@@ -467,10 +476,13 @@ def sm_train(roi: dict, mesh_specs: dict, args : dict, DATA : dict = None, data_
 
     
     # Print R² for each output key
+    GREEN, YEL, RED, BOLD, END = "\033[92m", "\033[93m", "\033[91m", "\033[1m", "\033[0m"
+    print(f"\n{BOLD}===== Training fit quality ====={END}")
     for key in output_keys:
-        print(f"\tR-squared {key}: \t{r2[key]:4.2f}")
-
-    print(f"\tCondition number M: \t{condM:4.2f}")
+        val = r2[key]
+        col = GREEN if val >= 0.99 else (YEL if val >= 0.95 else RED)
+        print(f"\t{BOLD}R-squared {key}:\t{col}{val:4.2f}{END}")
+    print(f"\t{BOLD}Condition number M:\t{condM:4.2f}{END}")
     sys.stdout.flush()
 
     ## ===================================
@@ -680,8 +692,6 @@ def run_creep(data : dict, SM : dict, sim_range : range, args : dict | None = No
     total_iterations = sum(len(data[i]['evm']) for i in data)
     # tqdm: wait bar update
     with tqdm(total=total_iterations) as pbar:
-        # # empty temporary dict reset
-        # this_valid = {}
 
         print("Begin simulations...")
         sys.stdout.flush()

@@ -3,7 +3,16 @@
 """
 © 2026. Triad National Security, LLC. All rights reserved.
 
-This program was produced under U.S. Government contract 89233218CNA000001 for Los Alamos National Laboratory (LANL), which is operated by Triad National Security, LLC for the U.S. Department of Energy/National Nuclear Security Administration. All rights in the program are reserved by Triad National Security, LLC, and the U.S. Department of Energy/National Nuclear Security Administration. The Government is granted for itself and others acting on its behalf a nonexclusive, paid-up, irrevocable worldwide license in this material to reproduce, prepare. derivative works, distribute copies to the public, perform publicly and display publicly, and to permit others to do so. 
+This program was produced under U.S. Government contract 89233218CNA000001
+for Los Alamos National Laboratory (LANL), which is operated by Triad
+National Security, LLC for the U.S. Department of Energy/National Nuclear
+Security Administration. All rights in the program are reserved by Triad
+National Security, LLC, and the U.S. Department of Energy/National Nuclear
+Security Administration. The Government is granted for itself and others
+acting on its behalf a nonexclusive, paid-up, irrevocable worldwide license
+in this material to reproduce, prepare derivative works, distribute copies
+to the public, perform publicly and display publicly, and to permit others
+to do so.
 
 ==============================================================================================================
 @author: Andre Ruybalid
@@ -67,7 +76,7 @@ def augment_piecewise_data(
     max_points_per_sim : int
         Hard cap on points after augmentation (uniform re-sample if exceeded).
     remove_initial_below_max_key : str, default "vmJ2"
-        Key used to detect first occurrence of maximum value → remove all points before.
+        Key used to detect first occurrence of maximum value → remove all points before. This is relevant for particular creep data sets containing 'vmJ2" (stress as key).
         If set to None, step is skipped.
 
     Returns

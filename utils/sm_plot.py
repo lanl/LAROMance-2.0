@@ -3,7 +3,16 @@
 """
 © 2026. Triad National Security, LLC. All rights reserved.
 
-This program was produced under U.S. Government contract 89233218CNA000001 for Los Alamos National Laboratory (LANL), which is operated by Triad National Security, LLC for the U.S. Department of Energy/National Nuclear Security Administration. All rights in the program are reserved by Triad National Security, LLC, and the U.S. Department of Energy/National Nuclear Security Administration. The Government is granted for itself and others acting on its behalf a nonexclusive, paid-up, irrevocable worldwide license in this material to reproduce, prepare. derivative works, distribute copies to the public, perform publicly and display publicly, and to permit others to do so. 
+This program was produced under U.S. Government contract 89233218CNA000001
+for Los Alamos National Laboratory (LANL), which is operated by Triad
+National Security, LLC for the U.S. Department of Energy/National Nuclear
+Security Administration. All rights in the program are reserved by Triad
+National Security, LLC, and the U.S. Department of Energy/National Nuclear
+Security Administration. The Government is granted for itself and others
+acting on its behalf a nonexclusive, paid-up, irrevocable worldwide license
+in this material to reproduce, prepare derivative works, distribute copies
+to the public, perform publicly and display publicly, and to permit others
+to do so.
 
 ==============================================================================================================
 @author: Andre Ruybalid
@@ -455,7 +464,7 @@ def plottraces(data: dict, input_keys: list, output_keys: list, xlog=False, ylog
 
     if storepath is not None:
         os.makedirs(storepath, exist_ok=True)
-        fig_traces.savefig(os.path.join(storepath, "Data_simulation_traces" + filename + ".png"))
+        fig_traces.savefig(os.path.join(storepath, "Traces_data_" + filename + ".png"))
     elif storepath is None:
         plt.show(block=False)
 
@@ -582,8 +591,8 @@ def plotdata(data: dict, input_keys: list, output_keys: list, simulation_recordi
     fig_input_fields.tight_layout()
     if storepath is not None:
         os.makedirs(storepath, exist_ok=True)
-        fig_input_fields.savefig(os.path.join(storepath, "Data_input_fields" + filename + ".png"))
-        fig_output_fields.savefig(os.path.join(storepath, "Data_output_fields" + filename + ".png"))
+        # fig_input_fields.savefig(os.path.join(storepath, "Data_input_fields" + filename + ".png"))
+        fig_output_fields.savefig(os.path.join(storepath, "Scatter_data_" + filename + ".png"))
     elif storepath is None:
         plt.show(block=False)
 

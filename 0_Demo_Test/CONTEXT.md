@@ -17,12 +17,9 @@ The script has two mutually-exclusive modes:
 
 | Mode     | Flag      | Behaviour                                                                             |
 |----------|-----------|---------------------------------------------------------------------------------------|
-| **Demo** | `--demo`  | Interactive walkthrough. Prints the equivalent terminal command for each stage, runs it against the example data, summarises the artifacts produced, and pauses for `Enter` between stages. |
-| **Test** | `--test`  | Non-interactive smoke test. Runs the same sequence, asserts the expected artifacts exist, prints a per-stage `PASS`/`FAIL` table, and exits `0` (all passed) or non-zero (any failure). |
-
-Add `--yes` to run **either** mode without any interactive pauses/prompts
-(useful for CI, or a hands-off demo). `--test` already implies non-interactive;
-`--yes` additionally suppresses the final confirmation prompt in demo mode.
+| **Demo** | `--demo`  | Interactive walkthrough. Prints the equivalent terminal command for each stage, runs it against the example data, narrates the WHY behind each step, summarises the artifacts produced, and pauses for `Enter` between stages. ALWAYS keeps the generated artifacts for exploration. |
+| **Test** | `--test`  | Non-interactive smoke test. Runs the same sequence, asserts the expected artifacts exist, prints a concise PASS summary, cleans up, and exits `0` (all passed) or non-zero (any failure). Add `--keep` to a `--test` run for adeeper check that retains the artifacts and prints the full per-stage
+`PASS`/`FAIL` table so you can inspect the files by hand.|
 
 ## Example data
 
@@ -52,20 +49,33 @@ this stage folder and are cleaned up on success.
   still work?" target to ask the agent to run after making changes.
 
 ## How to run
+### Quick Start
+
+```bash
+# From the repository root
+cd 0_Demo_Test
+python run_test_demo.py --demo
+```
+
+That single command runs the entire LAROMance pipeline (stages 1 → 5) against
+the shipped Viscoplasticity/Creep example, narrating each step and keeping all
+generated artifacts so you can explore them afterwards.
+
+### Call Flags for Demo and Testing
 
 ```bash
 # From the repository root
 cd 0_Demo_Test
 
-# Interactive guided tour of the whole pipeline against the example data
+# Interactive guided tour of the whole pipeline against the example data.
+# Pauses between stages and ALWAYS keeps the generated artifacts.
 python run_test_demo.py --demo
 
-# Non-interactive smoke test (prints PASS/FAIL, sets exit code)
+# Non-interactive smoke test: concise PASS summary + exit code, then cleans up.
 python run_test_demo.py --test
 
-# Fully hands-off (no pauses/prompts in either mode)
-python run_test_demo.py --test --yes
-python run_test_demo.py --demo --yes
+# Deeper test: keep the artifacts and print the full per-stage PASS/FAIL table.
+python run_test_demo.py --test --keep
 
 # Show all options
 python run_test_demo.py --help

@@ -386,34 +386,34 @@ if args.split_data is not None:
     # Plot training subset
     smp.plotdata(TRAIN_DATA['data'], input_keys=input_keys, output_keys=output_keys,
                  simulation_recording_interval=1, inc=-1, cmap='magma',
-                 storepath="./output", filename="_Curated_train_scatter_",
+                 storepath="./output", filename="curated_train",
                  dark=True)
     smp.plottraces(TRAIN_DATA['data'], input_keys=["t", "evm"], output_keys=plottraces_output_keys,
                    ylog=True,
-                   storepath="./output", filename="_Curated_train_trace_",
+                   storepath="./output", filename="curated_train",
                    color='green',
                    dark=True)
     # Plot testing subset (if available)
     if TEST_DATA is not None:
         smp.plotdata(TEST_DATA['data'], input_keys=input_keys, output_keys=output_keys,
                      simulation_recording_interval=1, inc=-1, cmap='magma',
-                     storepath="./output", filename="_Curated_test_scatter_",
+                     storepath="./output", filename="curated_testing",
                      dark=True)
         smp.plottraces(TEST_DATA['data'], input_keys=["t", "evm"], output_keys=plottraces_output_keys,
                        ylog=True,
-                       storepath="./output", filename="_Curated_test_trace_",
+                       storepath="./output", filename="curated_testing",
                        color='green',
                        dark=True)
 else:
     # Original behavior – plot the full curated dataset
     smp.plotdata(DATA_new['data'], input_keys=input_keys, output_keys=output_keys,
                  simulation_recording_interval=1, inc=-1, cmap='magma',
-                 storepath="./output", filename="_Curated_",
+                 storepath="./output", filename="curated",
                  dark=True)
 
     smp.plottraces(DATA_new['data'], input_keys=["t", "evm"], output_keys=plottraces_output_keys,
                    ylog=True,
-                   storepath="./output", filename="_Curated_",
+                   storepath="./output", filename="curated",
                    color='green',
                    dark=True)
 
@@ -443,11 +443,11 @@ if args.anchor_points:
         # Plot the augmented training dataset
         smp.plotdata(TRAIN_DATA['data'], input_keys=input_keys, output_keys=output_keys,
                      simulation_recording_interval=1, inc=-1, cmap='magma',
-                     storepath="./output", filename="_Curated_and_Augmented_scatter_",
+                     storepath="./output", filename="curated_and_augmented_training",
                      dark=True)
         smp.plottraces(TRAIN_DATA['data'], input_keys=["t", "evm"], output_keys=output_keys,
                        ylog=True,
-                       storepath="./output", filename="_Curated_and_Augmented_trace_",
+                       storepath="./output", filename="curated_and_augmented_training",
                        color='purple',
                        dark=True)
 
