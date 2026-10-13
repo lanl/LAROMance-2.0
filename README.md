@@ -56,6 +56,8 @@ Every stage ships a `CONTEXT.md` that details the stage's workflow, scripts, and
 ```text
 LAROMance-2.0
 |
+├─ 0_Demo_Test                     – Self-contained demo/smoke test that runs the whole pipeline (stages 1→5) headlessly against the shipped Viscoplasticity/Creep example data. Run `0_Demo_Test/run_test_demo.py --demo` for a guided tour or `--test` for a pass/fail check.
+|
 ├─ 1_Data_Generation               – Generate data (e.g., High‑Fidelity Polycrystal Modeling)
 │   ├─ 11_Generation_Model_Summary – Read model scripts and input decks
 │   ├─ 12_Design_of_Experiments    – Latin Hypercube Sampling (or your own) and configure the parameter space
@@ -74,7 +76,6 @@ LAROMance-2.0
 └─5_Clean_Pipeline                 – Clean generated artefacts from previous stages (remove `output` and `references` directories, keep documentation, utils and example data). Run `5_Clean_Pipeline/clean_pipeline.sh` after completing stage 4.2 or when restarting the workflow from an archived copy.
  
     *The utilities are modular; to retarget another FEM/physics solver, replace the template files and add a small wrapper (e.g., new helper functions or classes in `utils/sm_publish.py`) that writes the appropriate input files for the target code.
-
 
 ```
 
