@@ -1063,8 +1063,11 @@ def generate_refinement_nodes(existing_nodes, bbox, spacing=0.1, mode="grid", sh
     return new_simplex_nodes
 
 
-def build_simplex_extrusion_nd(mesh_specs, roi, nodes=None):
-    dim_names = list(mesh_specs['element_numbers'].keys())
+def build_simplex_extrusion_nd(mesh_specs, roi, nodes=None, dim_names=None):
+    if dim_names is None:
+        dim_names = list(mesh_specs['element_numbers'].keys())
+    else:
+        dim_names = list(dim_names)
     simplex_dims = mesh_specs.get('tri_elements', [])
     stack_dims = [d for d in dim_names if d not in simplex_dims]
 
