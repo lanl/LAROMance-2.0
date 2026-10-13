@@ -185,8 +185,6 @@ def sm_train(roi: dict, mesh_specs: dict, args : dict, DATA : dict = None, data_
         ndim_base = np.array(mesh_specs['premade_mesh']['nodes']).shape[1]
         ndim_target = len(mesh_specs['element_numbers'])
 
-        print(f"--> ndim_target: {ndim_target}, ndim_base: {ndim_base}")
-
         if ndim_target > ndim_base:
             if mesh_specs.get("tri_elements", []):
                 print(f"\nExtrude the premade {ndim_base}D triangular mesh into {ndim_target - ndim_base} higher dimensions...")
