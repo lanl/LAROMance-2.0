@@ -19,7 +19,7 @@
       "elem": "[0.0,1e-14,1e-12,1e-11,1e-10,1e-9,1e-8,1e-7,1e-6,1e-5,1e-4,1e-2,0.2]",
       "tri": false,
       "plot": false,
-      "map": "minmax"
+      "map": "log10"
     },
     {
       "key": "rhoc",
@@ -42,6 +42,12 @@
     }
   ],
   "plot_2d_mode": false,
+  "roi": {
+    "vmJ2": [
+      0.0,
+      512.0
+    ]
+  },
   "args": {
     "data_file": "/Users/andreruybalid/LAROMance_process/3_Surrogate_Modeling/31_Surrogate_Training/references/Curated_80pct_train_Creep_runs_with_dislocation_density_tracking.pickle",
     "map_input": {
@@ -62,11 +68,10 @@
         }
       },
       "evm": {
-        "minmax": {
-          "range": [
-            -1.0,
-            1.0
-          ]
+        "log10": {
+          "factor": null,
+          "lowerbound": 0.0,
+          "upperbound": 1.0
         }
       },
       "rhoc": {
@@ -88,7 +93,7 @@
       "rhoc": {
         "symlog": {
           "lowerbound": -1.0,
-          "upperbound": 1.0
+          "upperbound": 0.0
         }
       }
     },
