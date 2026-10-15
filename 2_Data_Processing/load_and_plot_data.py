@@ -47,7 +47,7 @@ group.add_argument(
 group.add_argument(
     "--factor",
     type=float,
-    help="Down‑sampling factor (e.g., 1.3 reduces points by ~30%).",
+    help="Down‑sampling factor (e.g., 1.3 reduces points by ~30%%).",
 )
 parser.add_argument(
     "--split_data",
@@ -82,6 +82,12 @@ parser.add_argument('--concat', action='store_true',
 # retains its original behaviour of loading the single hard‑coded `filename`.
 parser.add_argument('--pickle_files', type=str, default=None,
     help='Comma‑separated list of pickle files (relative to the references folder) to load and merge.')
+parser.add_argument('--ylog', action=argparse.BooleanOptionalAction, default=True,
+    help='Use logarithmic scale on the y‑axis of the trace plots. '
+         'Use --no-ylog to disable (default: enabled).')
+parser.add_argument('--xlog', action=argparse.BooleanOptionalAction, default=False,
+    help='Use logarithmic scale on the x‑axis of the trace plots. '
+         'Use --xlog to enable (default: disabled).')
 args = parser.parse_args()
 
 # ----------------------------------------------------------------------
@@ -420,7 +426,7 @@ if args.split_data is not None:
                  storepath="./output", filename="curated_train",
                  dark=True)
     smp.plottraces(TRAIN_DATA['data'], input_keys=trace_input_keys, output_keys=plottraces_output_keys,
-                   ylog=True,
+                   ylog=args.ylog, xlog=args.xlog,
                    storepath="./output", filename="curated_train",
                    color='green',
                    dark=True)
@@ -431,7 +437,7 @@ if args.split_data is not None:
                      storepath="./output", filename="curated_testing",
                      dark=True)
         smp.plottraces(TEST_DATA['data'], input_keys=trace_input_keys, output_keys=plottraces_output_keys,
-                       ylog=True,
+                       ylog=args.ylog, xlog=args.xlog,
                        storepath="./output", filename="curated_testing",
                        color='green',
                        dark=True)
@@ -443,7 +449,7 @@ else:
                  dark=True)
 
     smp.plottraces(DATA_new['data'], input_keys=trace_input_keys, output_keys=plottraces_output_keys,
-                   ylog=True,
+                   ylog=args.ylog, xlog=args.xlog,
                    storepath="./output", filename="curated",
                    color='green',
                    dark=True)
@@ -477,7 +483,7 @@ if args.anchor_points:
                      storepath="./output", filename="curated_and_augmented_training",
                      dark=True)
         smp.plottraces(TRAIN_DATA['data'], input_keys=trace_input_keys, output_keys=output_keys,
-                       ylog=True,
+                       ylog=args.ylog, xlog=args.xlog,
                        storepath="./output", filename="curated_and_augmented_training",
                        color='purple',
                        dark=True)

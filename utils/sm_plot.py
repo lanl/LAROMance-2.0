@@ -450,9 +450,9 @@ def plottraces(data: dict, input_keys: list, output_keys: list, xlog=False, ylog
                 if output_key.startswith("U["):
                     # raise IOError("debug")
                     key = output_key[2:-1]
-                    plotxy(data[sim][input_key], data[sim]['U'][key], color=color, marker='-', ax = ax_traces[i,j], xlog=xlog, ylog=ylog)
+                    plotxy(data[sim][input_key], data[sim]['U'][key], color=color, marker='.', ax = ax_traces[i,j], xlog=xlog, ylog=ylog)
                 else:
-                    plotxy(data[sim][input_key], data[sim][output_key], color=color, marker='-', ax = ax_traces[i,j], xlog=xlog, ylog=ylog)
+                    plotxy(data[sim][input_key], data[sim][output_key], color=color, marker='.', ax = ax_traces[i,j], xlog=xlog, ylog=ylog)
                 ax_traces[i, j].set_xlabel(input_key)
                 ax_traces[i, j].set_ylabel(output_key)
 
@@ -1072,6 +1072,7 @@ def scatterfield(x,y, masked_z, xlabel='vmJ2 [MPa]', ylabel='temperature [K]',
         ax_hist.tick_params(labelsize = 24)      # axis properties
     
     fig.tight_layout()    
+    
     plt.show(block=False)
     
     ## -------------------------------------------------------------------------------
