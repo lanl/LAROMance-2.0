@@ -118,6 +118,8 @@ The script uses `smd.curate_dataset()` which accepts two mutually exclusive para
       1. In particular the ```scale_data``` argument can be set to **False**, to downsample across a linear (rather than logarithmic) domain. 
       2. Also the ```downsampling_threshold``` can be adjusted (this should be considered in the unit of the data domain, e.g., log10-space when ```scale_factor=True```). This parameter will set a balance point at the provided value, and will provide a data set with equal max data points on either side of the ```downsample_threshold``` value provided as argument. Default is set to a very low value of $10^{-20}$ (```downsampling_threshold=-20``` with ```scale_factor=True```), such that the threshold is effectively outside of (most) data and as such is effectively disabled (unused).
 - `downsample_factor` – factor by which to reduce the number of points (e.g., 1.3 means ~30 % fewer points).  
+- `downsample_key` – the per-simulation input array that defines the monotonic axis along which points are kept/dropped. Defaults to `'evm'` (strain) for the crystal-plasticity creep datasets. The driver `load_and_plot_data.py` auto-detects this: if `'evm'` is absent (as in the **Cantera chemical-kinetics example**) it falls back to `'t'` (time). You can override explicitly with the `--downsample_key` CLI flag (e.g. `--downsample_key t`).
+
 
 The script prints progress information and creates a new pickle file in the same `data_path` directory.
 ### Interactive workflow
@@ -168,7 +170,7 @@ If you want to inspect time‑series traces of specific variables, you can use:
 ```python
 smp.plottraces(
     data,
-    input_keys=["t", "evm"],                     # usually time or strain
+    input_keys=["t", "evm"],                     # x-axis: usually time and/or strain
     output_keys=["rhoc", "U[evm]"],
     ylog=True,                                   # log‑scale on y‑axis
     storepath="./output",
@@ -176,6 +178,14 @@ smp.plottraces(
     dark=True
 )
 ```
+
+> **Note (generic x-axis):** `input_keys` just lists the per-simulation arrays to
+> use as x-axes; `plottraces` plots whatever you give it. The driver
+> `load_and_plot_data.py` builds this list automatically as `trace_input_keys`,
+> filtering the preferred axes `["t", "evm"]` down to those that exist in the
+> data. For the creep datasets both are kept; for the Cantera kinetics example
+> (no `evm`) only `t` is used. `plottraces` uses `squeeze=False` internally so a
+> single input axis or a single output key still renders correctly.
 
 This produces line‑plots for each simulation in the dataset. It is **not required** for the paper‑ready figures but can be helpful during exploratory analysis.
 

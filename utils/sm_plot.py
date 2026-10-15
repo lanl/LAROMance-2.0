@@ -435,8 +435,12 @@ def plottraces(data: dict, input_keys: list, output_keys: list, xlog=False, ylog
         Color of the trace lines
     """
     
-    # Prepare trace figure
-    fig_traces, ax_traces = plt.subplots(len(input_keys), len(output_keys), figsize=(11, 8))
+    # Prepare trace figure. ``squeeze=False`` guarantees ``ax_traces`` is always
+    # a 2D array so the ``ax_traces[i, j]`` indexing below works even when there
+    # is only a single input axis (e.g. the kinetics example uses just 't') or a
+    # single output key. For the creep case (2+ x N) behavior is unchanged.
+    fig_traces, ax_traces = plt.subplots(len(input_keys), len(output_keys),
+                                         figsize=(11, 8), squeeze=False)
     print("len input: {},\nlen_output: {}".format(len(input_keys), len(output_keys)))
     plt_cnt = 0
     for sim in data:

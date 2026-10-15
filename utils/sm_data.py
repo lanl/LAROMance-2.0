@@ -341,12 +341,11 @@ def trim_creep_dataset(DATA, trim_variable=None, trim_max_threshold=np.inf):
     return DATA
 
 
-def curate_dataset(DATA, evm_max=None, U_evm_max=None, downsample_max_length=250, downsample_factor=None):
+def curate_dataset(DATA, evm_max=None, U_evm_max=None, downsample_max_length=250,
+                   downsample_factor=None, downsample_key='evm'):
     """
     Curates the dataset in place, optionally trimming by max values for 'evm' and rejecting
     whole simulations by 'U.evm'.
-
-    Useful for Legacy (HT9) VPSC datasets from A. Tallman.
 
     Parameters
     ----------
@@ -360,6 +359,13 @@ def curate_dataset(DATA, evm_max=None, U_evm_max=None, downsample_max_length=250
         Maximum number of timesteps after downsampling.
     downsample_factor : int
         Factor to downsample by
+    downsample_key : str
+        Name of the per-simulation input array that defines the monotonic axis
+        used to decide which indices to keep when down-sampling. Defaults to
+        'evm' (strain) for the crystal-plasticity creep datasets. For other
+        datasets (e.g. the Cantera chemical-kinetics example) pass the relevant
+        progress axis, e.g. 't' (time). The chosen array must exist in every
+        simulation and be the same length as the other per-step arrays.
     Returns
     -------
     dict
@@ -420,11 +426,17 @@ def curate_dataset(DATA, evm_max=None, U_evm_max=None, downsample_max_length=250
             continue
 
         # Thinning / downsampling
+        if downsample_key not in sim_data:
+            raise KeyError(
+                "curate_dataset: downsample_key '{}' not found in simulation {}. "
+                "Available input keys: {}. Pass downsample_key= the progress axis "
+                "for this dataset (e.g. 't' for the kinetics example).".format(
+                    downsample_key, sim, [k for k in sim_data.keys() if k != 'U']))
         if downsample_factor is not None and downsample_factor > 1:
             # Enhanced downsampling: works for integer and fractional factors > 1.
             # Goal: keep approximately total_len / downsample_factor points,
             # while always retaining the first and last points.
-            total_len = len(sim_data['evm'])
+            total_len = len(sim_data[downsample_key])
             # Compute desired number of points after downsampling
             target_len = int(np.ceil(total_len / downsample_factor))
             # Ensure at least two points (first and last)
@@ -442,7 +454,7 @@ def curate_dataset(DATA, evm_max=None, U_evm_max=None, downsample_max_length=250
                 scale_data=True,
                 remove_initial_incs=0
             )
-            thinned_indices = downsampler.downsample(sim_data['evm'])
+            thinned_indices = downsampler.downsample(sim_data[downsample_key])
         for key, value in sim_data.items():
             if isinstance(value, dict):
                 for subkey, subval in value.items():

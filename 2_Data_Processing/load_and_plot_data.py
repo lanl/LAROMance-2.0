@@ -72,6 +72,10 @@ parser.add_argument('--anchor_points', type=str, default=None,
     help='Comma-separated list of anchor points for optional data augmentation.')
 parser.add_argument('--correct_rhoc', action='store_true',
     help='Apply Karl‑specific correction to U[rhoc] rates.')
+parser.add_argument('--downsample_key', type=str, default=None,
+    help="Per-simulation input array used as the monotonic axis for down‑sampling. "
+         "Defaults to 'evm' (strain) for creep datasets, auto-falling back to 't' "
+         "(time) when 'evm' is absent, e.g. for the Cantera kinetics example.")
 parser.add_argument('--concat', action='store_true',
     help='If set, concatenate the curated/augmented dataset and generate the histogram plot.')
 # Accept a comma‑separated list of pickle files to merge. If omitted the script
@@ -285,10 +289,20 @@ if args.correct_rhoc:
 # Curate / down‑sample the dataset
 # ----------------------------------------------------------------------
 print("\nCurating dataset (down‑sampling)...")
+# Decide which per-step array defines the down-sampling axis. Creep datasets use
+# 'evm' (strain); the Cantera kinetics example has no 'evm' and uses 't' (time).
+if args.downsample_key:
+    downsample_key = args.downsample_key
+elif 'evm' in data[first_key]:
+    downsample_key = 'evm'
+else:
+    downsample_key = 't'
+print(f"  down‑sampling axis: '{downsample_key}'")
 DATA_new = smd.curate_dataset(
                             copy.deepcopy(DATA),
                             downsample_max_length=downsample_max_length,
                             downsample_factor=downsample_factor,
+                            downsample_key=downsample_key,
                         )
 # ----------------------------------------------------------------------
 # Split data into training (concatenated) and testing (unconcatenated) subsets
@@ -378,6 +392,23 @@ print(f"Filtered output_keys: {output_keys}")
 # Use the same list for plottraces (no further transformation needed)
 plottraces_output_keys = output_keys
 
+# Input (x-axis) keys for the per-simulation trace plots. Historically this was
+# hard-coded to ["t", "evm"] (time and strain) for the creep datasets. The
+# Cantera chemical-kinetics example has no 'evm' axis, so filter to whichever
+# of the preferred axes actually exist in the data. This keeps creep behavior
+# identical while letting kinetics (and any future dataset) work automatically.
+preferred_trace_input_keys = ["t", "evm"]
+trace_input_keys = [k for k in preferred_trace_input_keys if sample_sim is not None and k in sample_sim]
+if not trace_input_keys:
+    # Fallback: use 't' if present, else the first non-'U'/'x' input available.
+    if sample_sim is not None and "t" in sample_sim:
+        trace_input_keys = ["t"]
+    elif sample_sim is not None:
+        trace_input_keys = [next((k for k in sample_sim if k not in ("U", "x")), "t")]
+    else:
+        trace_input_keys = ["t"]
+print(f"Trace input (x-axis) keys: {trace_input_keys}")
+
 # ---------------------------------------------------------------------
 # ---------------------------------------------------------------------
 # Plot the curated (downsampled/balanced) dataset 
@@ -388,7 +419,7 @@ if args.split_data is not None:
                  simulation_recording_interval=1, inc=-1, cmap='magma',
                  storepath="./output", filename="curated_train",
                  dark=True)
-    smp.plottraces(TRAIN_DATA['data'], input_keys=["t", "evm"], output_keys=plottraces_output_keys,
+    smp.plottraces(TRAIN_DATA['data'], input_keys=trace_input_keys, output_keys=plottraces_output_keys,
                    ylog=True,
                    storepath="./output", filename="curated_train",
                    color='green',
@@ -399,7 +430,7 @@ if args.split_data is not None:
                      simulation_recording_interval=1, inc=-1, cmap='magma',
                      storepath="./output", filename="curated_testing",
                      dark=True)
-        smp.plottraces(TEST_DATA['data'], input_keys=["t", "evm"], output_keys=plottraces_output_keys,
+        smp.plottraces(TEST_DATA['data'], input_keys=trace_input_keys, output_keys=plottraces_output_keys,
                        ylog=True,
                        storepath="./output", filename="curated_testing",
                        color='green',
@@ -411,7 +442,7 @@ else:
                  storepath="./output", filename="curated",
                  dark=True)
 
-    smp.plottraces(DATA_new['data'], input_keys=["t", "evm"], output_keys=plottraces_output_keys,
+    smp.plottraces(DATA_new['data'], input_keys=trace_input_keys, output_keys=plottraces_output_keys,
                    ylog=True,
                    storepath="./output", filename="curated",
                    color='green',
@@ -445,7 +476,7 @@ if args.anchor_points:
                      simulation_recording_interval=1, inc=-1, cmap='magma',
                      storepath="./output", filename="curated_and_augmented_training",
                      dark=True)
-        smp.plottraces(TRAIN_DATA['data'], input_keys=["t", "evm"], output_keys=output_keys,
+        smp.plottraces(TRAIN_DATA['data'], input_keys=trace_input_keys, output_keys=output_keys,
                        ylog=True,
                        storepath="./output", filename="curated_and_augmented_training",
                        color='purple',

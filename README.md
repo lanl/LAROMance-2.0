@@ -14,7 +14,40 @@ Welcome to the **LAROMance 2.0** codebase: an end‑to‑end, physics-AI pipel
 
  > **Want the math & training details?** Check out [LAROMANCE_USER_MANUAL.pdf](3_Surrogate_Modeling/31_Surrogate_Training/doc/LAROMANCE_USER_MANUAL.pdf) for the full technical training module manual and its info sections.
 
-*This repo's "main" branch is stable. The "devel" branch is for developers and may break in-between commits. Users are advised to work with "main".*
+*This repo's "main" branch is stable. The "devel" branch is for developers and may break in-between commits. Users are advised to work with "main". Fearure branches are for new experimental features and are not expected to behave well.* 
+
+## Forking the Repository
+If you plan to **develop, extend, or adapt** this pipeline, the recommended way to work is from your **own fork** rather than cloning this repository directly. A fork is your personal copy of the project on GitHub that you can freely push to, while still staying linked to this original repository (the *upstream*) so you can pull in future updates.
+
+1. **Create your fork.** Go to the repository page at [https://github.com/lanl/LAROMance-2.0](https://github.com/lanl/LAROMance-2.0) and click the **Fork** button (top‑right). GitHub creates a copy under your own account, e.g. `https://github.com/<your-username>/LAROMance-2.0`.
+
+2. **Clone *your* fork** to your computer (note it uses *your* username, not `lanl`):
+   ```bash
+   git clone https://github.com/<your-username>/LAROMance-2.0.git
+   cd LAROMance-2.0
+   ```
+   Cloning automatically sets up a remote named `origin` that points to **your fork** — this is where you will push your own changes.
+
+3. **Link the original repository as `upstream`** so you can fetch new updates from it:
+   ```bash
+   git remote add upstream https://github.com/lanl/LAROMance-2.0.git
+   # Verify both remotes are set correctly:
+   git remote -v
+   #   origin    https://github.com/<your-username>/LAROMance-2.0.git  (your fork)
+   #   upstream  https://github.com/lanl/LAROMance-2.0.git             (original)
+   ```
+
+4. **Day-to-day use.** Push your work to your fork, and pull in upstream updates when you want the latest changes:
+   ```bash
+   # Push your commits to your own fork:
+   git push origin main
+
+   # Fetch and merge the latest updates from the original repository:
+   git fetch upstream
+   git merge upstream/main
+   ```
+
+> With this setup, `origin` is *yours* (push freely) and `upstream` is the original project (pull updates only). You can also open a Pull Request from your fork on GitHub if you'd like to contribute changes back.
 
 ## Installation
 
