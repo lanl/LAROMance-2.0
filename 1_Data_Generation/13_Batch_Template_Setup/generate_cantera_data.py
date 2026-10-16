@@ -49,7 +49,7 @@ Usage
 
     # Explicit control
     python generate_cantera_data.py \\
-        --samples ../12_Design_of_Experiment/output/samples.csv \\
+        --samples references/samples.csv \\
         --out output/Cantera_kinetics_runs.pickle \\
         --limit 500 --nproc 4 --n_steps 200
 """
@@ -74,12 +74,11 @@ if _MODEL_SRC not in sys.path:
 
 import gri_autoignition as model  # noqa: E402
 
-
 # ----------------------------------------------------------------------------
 # Defaults
 # ----------------------------------------------------------------------------
 DEFAULT_SAMPLES = os.path.abspath(os.path.join(
-    _THIS_DIR, "..", "12_Design_of_Experiment", "output", "samples.csv"))
+    _THIS_DIR, "references", "samples.csv"))
 DEFAULT_OUT = os.path.join(_THIS_DIR, "output", "Cantera_kinetics_runs.pickle")
 
 
@@ -102,7 +101,8 @@ def _run_one(task):
 
 
 def generate(samples_csv, out_path, *, limit=None, nproc=1, n_steps=200,
-             t_end=1.0):
+             t_end=1.0, peak_refine=False, peak_species="CH4",
+             peak_density=200):
     """Generate the kinetics dataset pickle from a DOE csv.
 
     Parameters
@@ -116,9 +116,21 @@ def generate(samples_csv, out_path, *, limit=None, nproc=1, n_steps=200,
     nproc : int
         Number of worker processes (1 = serial).
     n_steps : int
-        Output points per trajectory (array length).
+        Output points on the backbone grid. With ``peak_refine`` the final
+        trajectory length is larger (and may vary per case).
     t_end : float
         Integration end time [s] passed to the model.
+    peak_refine : bool
+        If True, densely resolve the ignition rise and drop via a two-pass
+        peak-aware grid (see :func:`gri_autoignition.run_single_case`). This
+        produces variable-length trajectories, which the LAROMance layout
+        supports via the per-simulation ``sim_lengths`` metadata.
+    peak_species : str
+        Tracked species whose rate magnitude locates the ignition pulse when
+        ``peak_refine`` is True. Default ``"CH4"``.
+    peak_density : int
+        Number of extra points inserted across the ignition window when
+        ``peak_refine`` is True.
     """
     df = pd.read_csv(samples_csv)
     required = {"TEMP", "PRESSURE", "PHI"}
@@ -131,6 +143,12 @@ def generate(samples_csv, out_path, *, limit=None, nproc=1, n_steps=200,
         df = df.head(limit)
 
     kwargs = {"n_steps": n_steps, "t_end": t_end}
+    if peak_refine:
+        kwargs.update({
+            "peak_refine": True,
+            "peak_species": peak_species,
+            "peak_density": peak_density,
+        })
     tasks = [
         (i, float(r.TEMP), float(r.PRESSURE), float(r.PHI), kwargs)
         for i, r in enumerate(df.itertuples(index=False))
@@ -140,6 +158,9 @@ def generate(samples_csv, out_path, *, limit=None, nproc=1, n_steps=200,
     print("  mechanism      : {}".format(model.MECHANISM))
     print("  tracked species: {}".format(", ".join(model.TRACKED_SPECIES)))
     print("  n_steps        : {}   t_end : {} s".format(n_steps, t_end))
+    if peak_refine:
+        print("  peak_refine    : ON (species={}, +{} points around pulse)"
+              .format(peak_species, peak_density))
     print("  processes      : {}".format(nproc))
 
     t0 = time.time()
