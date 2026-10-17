@@ -1,18 +1,18 @@
 # 3.2 - Surrogate Testing
-This stage tests the LAROMAnce surrogate built by the training step, using a __TEST__ data set (unseen during training) and a graphical user interface Training Module (instruction manual is here [LAROMANCE_USER_MANUAL.pdf](3_Surrogate_Modeling/31_Surrogate_Training/doc/LAROMANCE_USER_MANUAL.pdf)).
+This stage tests the LAROMAnce surrogate built by the training step, using a __TEST__ data set (unseen during training), and visualizes testing results in the form of relative mean squared error and time-history traces.
 
 Proper testing overfitting requires a different dataset than used for training. This unseen dataset should not be concatenated, but should per-simulation time-histories. When the data processor of step `2_Data_Processing` is used for splitting a dataset into a training and testing partition, the this data format should correctly be stored in the respective *testing* pickle (see `.pickle` filename). The location of this test-data `.pickle` file should be `./references`.
 
-For the polycrystal creep modeling for which LAROMance is originally designed, this step runs creep simulations and then compares the surrogate prediction to the ground truth in the data. This is not done on the rate-based outputs, but on the accumulated strains. The error metrics are calculated based on the accumulated strain. Since the surrogate predicts, rates, considering the accumulated strain effectively considers the compounded error across time increments, which is a more stringent method than merely comparing rates directly.
+For the polycrystal creep modeling for which LAROMance is originally designed, this step runs creep simulations and then compares the surrogate prediction to the ground truth in the data. This is not done on the rate-based outputs, but on the **accumulated** strains. The error metrics are calculated based on the accumulated strain. Since the surrogate predicts, rates, considering the accumulated strain effectively considers the compounded error across time increments, which is a more stringent method than merely comparing rates directly.
 
 The code in this sstage is specifically written for comparing creep simulations. For other types of simulations or evaluations, the user must code those custom in `../../utils/sm_build.py`.
-
 
 ## What the script does
 
 1. Loads the testing data `.pickle`-file and the trained surrogate `SM.pickle` in `./references`. Before running anything, first make sure those files are present.
 2. Runs the simulations with the inputs from the data.
-3. Calculates error field metrics (e.g., mean squared relative error, i.e., MSRE).
+3. Calculates error field metrics (e.g., relative mean squared error, i.e., **Rel. MSRE**): 
+   >$\text{RelMSE} = \dfrac{\displaystyle\sum_{i=1}^{n} \left( y_i - \hat{y}_i \right)^2}{\displaystyle\sum_{i=1}^{n} y_i^2}$
 4. Stores the test results in the `output` folder of this stage, including error plots and time-history traces.
    
 ## How to Run
@@ -32,7 +32,6 @@ Then simply run:
 ```bash
 python test_surrogate.py --pickle_files Curated_20pct_test_Creep_runs_with_dislocation_density_tracking.pickle
 ```
-
 
 ## Oracle Mode
 During testing the script can run __oracle (truth‑injection) modes__. An oracle run feeds the surrogate with the *exact* high‑fidelity values for a selected subset of output variables, while the remaining outputs are still predicted by the surrogate. This lets the user probe how tightly the model’s outputs are coupled to one another – for example, the strain‑rate (`evm`) is an output, but the accumulated strain (which depends on the integrated strain‑rate) may also be used as an input to compute the next strain‑rate. By forcing the true strain‑rate and letting the surrogate predict the accumulated strain, or vice‑versa, you can see whether error in one variable propagates to the other.
