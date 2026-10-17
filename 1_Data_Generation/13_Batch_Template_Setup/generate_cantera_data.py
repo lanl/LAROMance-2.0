@@ -250,7 +250,8 @@ def main():
     if args.smoke and out == DEFAULT_OUT:
         out = os.path.join(_THIS_DIR, "output", "Cantera_kinetics_runs_smoke.pickle")
 
-    generate(args.samples, out, limit=limit, nproc=args.nproc,
+    generate(args.samples, out, limit=limit, nproc=args.nproc, 
+             peak_refine=True, peak_species="CH4", peak_density=200,      
              n_steps=args.n_steps, t_end=args.t_end)
 
 
