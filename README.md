@@ -168,6 +168,7 @@ stage of the pipeline.  Detailed usage instructions are provided in the
 
 ## Limitations
 This workflow is documented for the intended four-step path, and originally for thermomechanical creep data. Scripts and utilies are thin wrappers and can break if intputs, file layouts, or call order differ from what the CONTEXT.md files describe. It is not a hardened library: edge cases, unusual model design, and non-standard data shapes are not fully guarded. Treat this README.md and CONTEXT.md files within each stage as the supported interface, and adjust the utilities if your case falls outside that path. 
+This workflow is documented for the intended four-step path, and originally for thermomechanical creep data. Scripts and utilies are thin wrappers and can break if intputs, file layouts, or call order differ from what the CONTEXT.md files describe. It is not a hardened library: edge cases, unusual model design, and non-standard data shapes are not fully guarded. Treat this README.md and CONTEXT.md files within each stage as the supported interface, and adjust the utilities if your case falls outside that path. 
 
 ## Contributing & Support
 If this workflow is useful to you, a **GitHub star** on the repository is genuinely appreciated and helps others discover the project. Please also **reference this repository** in any work that builds on it.
