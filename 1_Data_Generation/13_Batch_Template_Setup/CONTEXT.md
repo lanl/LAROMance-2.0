@@ -8,70 +8,14 @@ This step supports **two** data-generation modes:
    external solvers (e.g. VPSC / EVP-FFT crystal plasticity) that must be fanned
    out to one SLURM run folder per design-of-experiment sample. Driven by
    `references/setup_run_folders.sh`.
-2. **Local mode** (`generate_cantera_data.py`) - for *cheap* models that can be
-   evaluated in-process on a laptop. Used by the **chemical-kinetics example**
+2. **Local mode** (using a local data generation model) - for *cheap* models that can be
+   evaluated in-process on a laptop. Used by, e.g., the **chemical-kinetics example**
    (Cantera GRI-Mech 3.0 autoignition). No per-run folders, no SLURM, no HPC:
    the script reads `samples.csv` and writes **one** `.pickle` directly.
 
 ---
 
-## Local mode: `generate_cantera_data.py` (chemical-kinetics example)
-
-The Cantera 0-D autoignition model (defined in
-`../11_Generative_Model_Summary/references/src/gri_autoignition.py`) runs in
-milliseconds-to-seconds per case, so the whole dataset is generated locally in
-one pass. The script:
-
-1. **Reads** the DOE `samples.csv` from step 1.2
-   (`../12_Design_of_Experiment/output/samples.csv`, columns `TEMP,PRESSURE,PHI`).
-2. **Integrates** one constant-pressure autoignition trajectory per row by
-   calling `gri_autoignition.run_single_case(T0, P, phi)`.
-3. **Assembles** all trajectories into the exact LAROMance Stage-2 layout
-   (`{"meta_data": {...}, "data": {int_id: {inputs..., "U": {rates...}}}}`,
-   every array of equal length) and writes it directly to
-   `output/Cantera_kinetics_runs.pickle`.
-
-### How to run (locally)
-
-```bash
-cd 1_Data_Generation/13_Batch_Template_Setup
-
-# Quick wiring test on the first 20 samples
-python generate_cantera_data.py --smoke
-
-# Full run over the DOE csv, parallelised across 4 processes
-python generate_cantera_data.py --nproc 4
-
-# Explicit control
-python generate_cantera_data.py \
-    --samples ../12_Design_of_Experiment/output/samples.csv \
-    --out output/Cantera_kinetics_runs.pickle \
-    --limit 500 --nproc 4 --n_steps 200 --t_end 1.0
-```
-
-Requires the `cantera` package in the active environment
-(`conda install -c conda-forge cantera` or `pip install cantera`).
-
-### Resulting pickle contents
-
-Per simulation ID:
-
-* **Inputs** - `temperature`, `pressure`, `phi` (scalar controls, repeated per
-  step), `t` (monotonic progress axis), and the feedback **state**: `T` plus the
-  tracked species mole fractions (`CH4, O2, CO2, H2O, CO, OH, H, O`).
-* **Outputs** (`U`) - the production **rates** `dT_dt` and `d<species>_dt`,
-  which span many orders of magnitude (near-zero during induction, spiking at
-  ignition), suiting the log10/symlog output scalings used downstream.
-
-### Prepare the next stage
-
-Copy `output/Cantera_kinetics_runs.pickle` into
-`../../2_Data_Processing/references/` and run `load_and_plot_data.py`
-(see `../../2_Data_Processing/CONTEXT.md`).
-
----
-
-## HPC batch mode (original workflow)
+## HPC batch mode
 
 ## Purpose
 
@@ -145,5 +89,60 @@ bash references/setup_run_folders.sh --autojob   # also triggers the auto‑subm
 ```
 
 > **Why run on the HPC?** The script expects to be executed on a compute node (or a login node with access to the scratch filesystem). It creates directories, copies potentially large input files, and may launch SLURM jobs; performing these steps locally would either fail (missing `/scratch`) or be inefficient.
+
+---
+ 
+## Local mode: (e.g., chemical-kinetics example)
+The Cantera 0-D autoignition model (defined in
+`../11_Generative_Model_Summary/references/src/gri_autoignition.py`) runs in
+milliseconds-to-seconds per case, so the whole dataset is generated locally in
+one pass. The script:
+
+1. **Reads** the DOE `samples.csv` from step 1.2
+   (`../12_Design_of_Experiment/output/samples.csv`, columns `TEMP,PRESSURE,PHI`).
+2. **Integrates** one constant-pressure autoignition trajectory per row by
+   calling `gri_autoignition.run_single_case(T0, P, phi)`.
+3. **Assembles** all trajectories into the exact LAROMance Stage-2 layout
+   (`{"meta_data": {...}, "data": {int_id: {inputs..., "U": {rates...}}}}`,
+   every array of equal length) and writes it directly to
+   `output/Cantera_kinetics_runs.pickle`.
+
+### How to run (locally)
+
+```bash
+cd 1_Data_Generation/13_Batch_Template_Setup
+
+# Quick wiring test on the first 20 samples
+python generate_cantera_data.py --smoke
+
+# Full run over the DOE csv, parallelised across 4 processes
+python generate_cantera_data.py --nproc 4
+
+# Explicit control
+python generate_cantera_data.py \
+    --samples ../12_Design_of_Experiment/output/samples.csv \
+    --out output/Cantera_kinetics_runs.pickle \
+    --limit 500 --nproc 4 --n_steps 200 --t_end 1.0
+```
+
+Requires the `cantera` package in the active environment
+(`conda install -c conda-forge cantera` or `pip install cantera`).
+
+### Resulting pickle contents
+
+Per simulation ID:
+
+* **Inputs** - `temperature`, `pressure`, `phi` (scalar controls, repeated per
+  step), `t` (monotonic progress axis), and the feedback **state**: `T` plus the
+  tracked species mole fractions (`CH4, O2, CO2, H2O, CO, OH, H, O`).
+* **Outputs** (`U`) - the production **rates** `dT_dt` and `d<species>_dt`,
+  which span many orders of magnitude (near-zero during induction, spiking at
+  ignition), suiting the log10/symlog output scalings used downstream.
+
+### Prepare the next stage
+
+Copy `output/Cantera_kinetics_runs.pickle` into
+`../../2_Data_Processing/references/` and run `load_and_plot_data.py`
+(see `../../2_Data_Processing/CONTEXT.md`).
 
 ---

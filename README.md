@@ -79,7 +79,6 @@ pip install \
     rtree \
     scikit-learn
 ```
-
 ## Stages and Folder Structure
 The framework is split into four self‑contained stages—each in its own folder (`1_Data_Generation`, `2_Data_Processing`, …). 
 
@@ -126,7 +125,6 @@ The process is modular, so the user can step into any stage, provided data from 
 >Pro-Tip: Keep one copy of the entire tree per material model, started empty and archived once filled, and do not mix files from different models in one pipeline. Use a fresh (empty) copy of the working tree for each new surrogate model. That way, the folder chain becomes the record of the model build. Use step 5_Clean_Pipeline to clean your pipeline for a fresh restart.
 
 ## Quick Start
-
 New to LAROMance? Run the whole pipeline end-to-end against the shipped
 Viscoplasticity/Creep example with a single command:
 
@@ -142,7 +140,6 @@ afterwards. For a quick, non-interactive health check use
 for details.
 
 ## Examples
-
 Below are brief pointers to the example folders that illustrate how to use each
 stage of the pipeline.  Detailed usage instructions are provided in the
 `README.md` files inside those folders.
@@ -152,9 +149,8 @@ stage of the pipeline.  Detailed usage instructions are provided in the
 * **Training‑Module practice data** – Found in [examples/Training_Module](examples/Training_Module).  This folder contains small synthetic datasets meant solely for exploring the GUI of the Training Modulein `31_Surrogate_Training`.  See its README for more info.
 * There is currently no dummy data generator model for stage **1-Data Generation** for testing or as example. 
 
-
 ## Limitations
-This workflow is documented for the intended four-step path. Scripts and utilies are thin wrappers and can break if intputs, file layouts, or call order differ from what the CONTEXT.md files describe. It is not a hardened library: edge cases, unusual model design, and non-standard data shapes are not fully guarded. Treat this README.md and CONTEXT.md files within each stage as the supported interface, and adjust the utilities if your case falls outside that path. 
+This workflow is documented for the intended four-step path, and originally for thermomechanical creep data. Scripts and utilies are thin wrappers and can break if intputs, file layouts, or call order differ from what the CONTEXT.md files describe. It is not a hardened library: edge cases, unusual model design, and non-standard data shapes are not fully guarded. Treat this README.md and CONTEXT.md files within each stage as the supported interface, and adjust the utilities if your case falls outside that path. 
 
 ## Contributing & Support
 If this workflow is useful to you, a **GitHub star** on the repository is genuinely appreciated and helps others discover the project. Please also **reference this repository** in any work that builds on it.
