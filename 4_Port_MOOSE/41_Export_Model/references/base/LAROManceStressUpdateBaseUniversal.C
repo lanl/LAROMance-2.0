@@ -24,8 +24,8 @@ using namespace Eigen;
 
 #include <iostream>
 
-registerMooseObject("SolidMechanicsApp", LAROManceStressUpdateBaseUniversal);
-registerMooseObject("SolidMechanicsApp", ADLAROManceStressUpdateBaseUniversal);
+registerMooseObject("LaromanceApp", LAROManceStressUpdateBaseUniversal);
+registerMooseObject("LaromanceApp", ADLAROManceStressUpdateBaseUniversal);
 
 // Works only in -dbg mode?
 template <bool is_ad>
@@ -1626,9 +1626,64 @@ LAROManceStressUpdateBaseUniversalTempl<is_ad>::computeROM(const unsigned out_in
       for (unsigned int local : nodes_by_vertex[v])
         N[local] = lambda[v];
     }
+
+    // ========== NEW: physical derivatives for simplex ==========
+    {
+      const unsigned int n_nodes = node_indices.size();
+      for (unsigned int p = 0; p < _num_inputs; ++p)
+        dN_phys[p].assign(n_nodes, GenericReal<is_ad>(0.0));
+
+      // Jacobian J (edge vectors from vertex 0)
+      DenseMatrix<GenericReal<is_ad>> J(_num_inputs, _num_inputs);
+      for (unsigned int j = 0; j < _num_inputs; ++j)
+        for (unsigned int i = 0; i < _num_inputs; ++i)
+          J(i, j) = _nodes[node_indices[j+1]][i] - _nodes[node_indices[0]][i];
+
+      // Inverse Jacobian
+      DenseMatrix<GenericReal<is_ad>> invJ(_num_inputs, _num_inputs);
+      invJ.zero();
+      for (unsigned int k = 0; k < _num_inputs; ++k)
+      {
+        DenseVector<GenericReal<is_ad>> rhs(_num_inputs); rhs.zero(); rhs(k) = 1.0;
+        DenseVector<GenericReal<is_ad>> sol(_num_inputs); sol.zero();
+        J.lu_solve(rhs, sol);
+        for (unsigned int i = 0; i < _num_inputs; ++i)
+          invJ(i, k) = sol(i);
+      }
+
+      // Reference gradients (vertex 0 = –1, vertices 1..n = identity)
+      std::vector<std::vector<GenericReal<is_ad>>> dN_ref(_num_inputs,
+                                             std::vector<GenericReal<is_ad>>(n_nodes, 0.0));
+      for (unsigned int p = 0; p < _num_inputs; ++p)
+      {
+        dN_ref[p][0] = -1.0;
+        dN_ref[p][p+1] = 1.0;
+      }
+
+      // Chain rule
+      for (unsigned int p = 0; p < _num_inputs; ++p)
+        for (unsigned int node = 0; node < n_nodes; ++node)
+        {
+          GenericReal<is_ad> sum = 0.0;
+          for (unsigned int k = 0; k < _num_inputs; ++k)
+            sum += invJ(p, k) * dN_ref[k][node];
+          dN_phys[p][node] = sum;
+        }
+    }
+    // ========== end NEW block ==========
   }
   else if (active_type == "extruded-simplex")
   {
+    // 1-D edge derivatives – build them FIRST (only for extrusion dims)
+    std::vector<std::vector<GenericReal<is_ad>>> dshape_functions_dxi(_num_inputs);
+    for (unsigned int d = 0; d < _num_inputs; ++d)
+      dshape_functions_dxi[d] =
+          iso_1d_lagrange_linear(
+              isoparametricInput(raw_input_point[d],
+                                min_element_values[d],
+                                max_element_values[d]),
+              /*derivative=*/true);
+
     for (unsigned int d = 0; d < _num_inputs; ++d)
     {
       if (std::find(tri_dims_indices.begin(), tri_dims_indices.end(), d) != tri_dims_indices.end())
@@ -1720,6 +1775,43 @@ LAROManceStressUpdateBaseUniversalTempl<is_ad>::computeROM(const unsigned out_in
         N[local] = val;
       }
     }
+
+    // ========== NEW: physical derivatives for extruded-simplex ==========
+    {
+      const unsigned int n_nodes = node_indices.size();
+      for (unsigned int p = 0; p < _num_inputs; ++p)
+        dN_phys[p].assign(n_nodes, GenericReal<is_ad>(0.0));
+
+      // Triangle reference derivatives (2×3)
+      std::vector<std::vector<GenericReal<is_ad>>> dN_tri(2, std::vector<GenericReal<is_ad>>(3));
+      dN_tri[0] = {-1.0, 1.0, 0.0};
+      dN_tri[1] = {-1.0, 0.0, 1.0};
+
+      for (unsigned int s = 0; s < 3; ++s)
+        for (unsigned int c = 0; c < n_hypercube; ++c)
+        {
+          unsigned int local = s * n_hypercube + c;
+          for (unsigned int p = 0; p < _num_inputs; ++p)
+          {
+            GenericReal<is_ad> val = 0.0;
+            if (p < 2)   // simplex subspace
+              val += dN_tri[p][s] *
+                     ext_shapes[extrusion_indices[0]][hypercube_corners[c][0]] *
+                     ext_shapes[extrusion_indices[1]][hypercube_corners[c][1]];
+            for (unsigned int d = 0; d < extrusion_indices.size(); ++d)
+            {
+              unsigned int ext_dim = extrusion_indices[d];
+              if (ext_dim == p)
+                val += lambda[s] *
+                       dshape_functions_dxi[ext_dim][hypercube_corners[c][d]] *
+                       (d == 0 ? ext_shapes[extrusion_indices[1]][hypercube_corners[c][1]]
+                               : ext_shapes[extrusion_indices[0]][hypercube_corners[c][0]]);
+            }
+            dN_phys[p][local] = val;
+          }
+        }
+    }
+    // ========== end NEW block ==========
   }
 
   else

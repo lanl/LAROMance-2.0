@@ -1706,8 +1706,8 @@ def write_moose_C_4D_cached(SM: dict, name: str):
 
 #include "{0}.h"
 
-registerMooseObject("BisonApp", {0});
-registerADMooseObject("BisonApp", AD{0});
+registerMooseObject("LaromanceApp", {0});
+registerADMooseObject("LaromanceApp", AD{0});
 
 template <bool is_ad>
 InputParameters
@@ -2052,8 +2052,8 @@ def write_moose_C_5D_cached(SM: dict, name: str):
 
 #include "{0}.h"
 
-registerMooseObject("BisonApp", {0});
-registerADMooseObject("BisonApp", AD{0});
+registerMooseObject("LaromanceApp", {0});
+registerADMooseObject("LaromanceApp", AD{0});
 
 template <bool is_ad>
 InputParameters
@@ -2411,8 +2411,8 @@ def write_moose_C_6D_cached(SM: dict, name: str):
 
 #include "{0}.h"
 
-registerMooseObject("BisonApp", {0});
-registerADMooseObject("BisonApp", AD{0});
+registerMooseObject("LaromanceApp", {0});
+registerADMooseObject("LaromanceApp", AD{0});
 
 template <bool is_ad>
 InputParameters

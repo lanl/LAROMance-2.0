@@ -197,7 +197,13 @@ def eval_shape_mixed_point(point_dict, node_coords, mesh_specs, debug=False):
         dshape_simplex = np.zeros((ndim, n_simplex))      # (ndim, n_simplex)
         for s_dim in simplex_idx:
             # MOOSE convention: reference interval [-1, 1] → derivative = ±0.5
-            dshape_simplex[s_dim, :] = np.array([-0.5, 0.5])
+            if n_simplex == 2:                       # 1-D edge (original behaviour)
+                for s_dim in simplex_idx:
+                    dshape_simplex[s_dim, :] = np.array([-0.5, 0.5])
+            elif n_simplex == 3:                     # 2-D triangle
+                # reference gradients on triangle with vertices (0,0), (1,0), (0,1)
+                dshape_simplex[simplex_idx] = np.array([[-1., 1., 0.],
+                                            [-1., 0., 1.]])
     else:
         shape_simplex  = np.ones((1, 1))
         n_simplex      = 1

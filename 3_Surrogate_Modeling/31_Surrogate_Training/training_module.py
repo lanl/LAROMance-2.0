@@ -1965,6 +1965,29 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
             QtWidgets.QMessageBox.critical(self, "Error", f"Failed to load state:\n{str(e)}")
 
 
+    def validate_tri_selection(self, tri_cb, checked):
+        """Ensure 'Tri' can only be checked on Plot-selected variables."""
+        if not checked:
+            return
+
+        # Get currently selected Plot variables
+        plot_vars = [w[0].currentText() for w in self.input_var_widgets if w[3].isChecked()]
+
+        # Find which variable this Tri checkbox belongs to
+        for cb, elem_input, t_cb, plot_cb, _, _ in self.input_var_widgets:
+            if t_cb is tri_cb:
+                var_name = cb.currentText()
+                if var_name not in plot_vars:
+                    tri_cb.setChecked(False)
+                    QtWidgets.QMessageBox.warning(
+                        self,
+                        "Invalid Tri Selection",
+                        f"'{var_name}' cannot be marked as Tri.\n\n"
+                        "Only the two variables selected for plotting (Plot checkbox) "
+                        "can be used as simplex (Tri) dimensions."
+                    )
+                break
+
     def add_input_cb(self):
         container = QtWidgets.QHBoxLayout()
         container.setContentsMargins(0, 0, 0, 0)
@@ -1977,6 +2000,7 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
         elem_input = QtWidgets.QLineEdit("6")
         elem_input.setFixedWidth(50)  # or 50 if you want a little more room
         tri_cb = QtWidgets.QCheckBox("Tri")
+        tri_cb.toggled.connect(lambda checked, cb=tri_cb: self.validate_tri_selection(cb, checked))
         plot_cb = QtWidgets.QCheckBox()
         plot_cb.setToolTip("Select variable for plotting (max 2)")
 
