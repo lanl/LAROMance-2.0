@@ -1537,11 +1537,47 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
         # run_button.clicked.connect(self.run_training)
         # self.setup_layout.addWidget(run_button)
 
-        # --- Training Method Selector ---
+        # === Training Method Selector (placed high in the GUI) ===
         self.training_method_combo = QtWidgets.QComboBox()
-        self.training_method_combo.addItems(["Grid-based (LAROMance)", "MLP / Point-based"])
+        self.training_method_combo.addItems([
+            "Grid-based",
+            "Neural PointNet (beta)",
+            "Neural MLP (beta)"
+        ])
         self.training_method_combo.setToolTip("Choose the surrogate training method")
         self.setup_layout.addWidget(self.training_method_combo)
+
+        # Neural Net settings group (shown only for PointNet / MLP)
+        self.nn_group = QtWidgets.QGroupBox("Neural Network Settings")
+        nn_layout = QtWidgets.QFormLayout()
+
+        self.nn_epochs = QtWidgets.QSpinBox()
+        self.nn_epochs.setRange(1, 10000)
+        self.nn_epochs.setValue(50)
+
+        self.nn_hidden = QtWidgets.QSpinBox()
+        self.nn_hidden.setRange(16, 2048)
+        self.nn_hidden.setValue(128)
+
+        self.nn_batch = QtWidgets.QSpinBox()
+        self.nn_batch.setRange(32, 8192)
+        self.nn_batch.setValue(1024)
+
+        self.nn_lr = QtWidgets.QDoubleSpinBox()
+        self.nn_lr.setDecimals(5)
+        self.nn_lr.setValue(0.001)
+
+        nn_layout.addRow("Epochs:", self.nn_epochs)
+        nn_layout.addRow("Hidden Size:", self.nn_hidden)
+        nn_layout.addRow("Batch Size:", self.nn_batch)
+        nn_layout.addRow("Learning Rate:", self.nn_lr)
+
+        self.nn_group.setLayout(nn_layout)
+        self.nn_group.setVisible(False)
+        self.setup_layout.addWidget(self.nn_group)
+
+        # Show/hide NN settings when method changes
+        self.training_method_combo.currentTextChanged.connect(self._update_training_method_ui)
 
         run_button = QtWidgets.QPushButton("Run Training")
         run_button.clicked.connect(self.run_training)
@@ -1583,6 +1619,11 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
         preview_widget.setLayout(preview_row)
         self.data_tab_layout.addWidget(preview_widget)
 
+
+    def _update_training_method_ui(self):
+        method = self.training_method_combo.currentText()
+        is_nn = method in ["Neural PointNet (beta)", "Neural MLP (beta)"]
+        self.nn_group.setVisible(is_nn)
 
     def trigger_lasso_selector(self):
         self.enable_lasso_selector = True
@@ -3909,16 +3950,17 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
         self.save_state()
 
 
-    def _handle_mlp_training_results(self, trained_model, input_vars, output_vars, map_input=None, map_output=None):
+    def _handle_mlp_training_results(self, trained_model, input_vars, output_vars, map_input=None, map_output=None, model_type=None):
         """Store MLP model + scalers so inference works correctly later."""
 
         self.SM = {
             "mlp_model": trained_model,
             "mlp_input_vars": input_vars,
             "mlp_output_vars": output_vars,
-            # Fitted scaler objects (needed by MLP inference in run_creep)
             "input_maps": map_input or self.args.get("fitted_map_input", {}),
             "output_maps": map_output or self.args.get("fitted_map_output", {}),
+            "mlp_model_type": model_type or self.args.get("mlp_model", "pointnet"),
+            "mlp_hidden": self.args.get("mlp_hidden", 128),
             "training_method": "mlp"
         }
 
@@ -3978,8 +4020,8 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
         # ======================================================
         selected_method = self.training_method_combo.currentText()
 
-        if selected_method == "Grid-based (LAROMance)":
-            print("\n>>> Using GRID-BASED training (original LAROMance path)")
+        if selected_method == "Grid-based":
+            print("\n>>> Using GRID-BASED training")
             new_data = self._prepare_grid_training_data(input_vars, output_vars)
             train_output, SM = smb.sm_train(
                 self.roi, self.mesh_specs, self.args, DATA=copy.deepcopy(new_data)
@@ -3987,32 +4029,43 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
             self._handle_grid_training_results(train_output, SM, new_data, input_vars, output_vars)
             return
 
-        elif selected_method == "MLP / Point-based":
-            print("\n>>> Using MLP training")
+        elif selected_method in ["Neural PointNet (beta)", "Neural MLP (beta)"]:
+            print(f"\n>>> Using Neural Net training ({selected_method})")
             new_data = self._prepare_grid_training_data(input_vars, output_vars)
 
-            # Keep original config dicts – do NOT overwrite args["map_*"] with fitted objects
             map_input_cfg  = self.args.get("map_input", {})
             map_output_cfg = self.args.get("map_output", {})
 
-            # Fit once so mlp_train receives real scaler objects (it will use them directly)
             _, fitted_map_input  = smd.fit_and_transform_input(
                 copy.deepcopy(new_data['data']), maps=map_input_cfg)
             _, fitted_map_output = smd.fit_and_transform_output(
                 copy.deepcopy(new_data['data']), maps=map_output_cfg)
 
-            # Pass the fitted scalers via a separate key that mlp_train understands
-            mlp_args = dict(self.args)  # shallow copy is enough
-            mlp_args["map_input"]  = fitted_map_input
-            mlp_args["map_output"] = fitted_map_output
+            # Map GUI labels to internal model names
+            if "PointNet" in selected_method:
+                model_type = "pointnet"
+            else:
+                model_type = "mlp"
+
+            mlp_args = dict(self.args)
+            mlp_args["map_input"]      = fitted_map_input
+            mlp_args["map_output"]     = fitted_map_output
+            mlp_args["mlp_model"]      = model_type          # ← clean internal name
+            mlp_args["mlp_epochs"]     = self.nn_epochs.value()
+            mlp_args["mlp_hidden"]     = self.nn_hidden.value()
+            mlp_args["mlp_batch_size"] = self.nn_batch.value()
+            mlp_args["mlp_lr"]         = self.nn_lr.value()
 
             trained_model = smb.mlp_train(
-                self.roi,
-                self.mesh_specs,
-                mlp_args,
-                DATA=copy.deepcopy(new_data)
+                self.roi, self.mesh_specs, mlp_args, DATA=copy.deepcopy(new_data)
             )
-            self._handle_mlp_training_results(trained_model, input_vars, output_vars, map_input=fitted_map_input, map_output=fitted_map_output)
+
+            self._handle_mlp_training_results(
+                trained_model, input_vars, output_vars,
+                map_input=fitted_map_input,
+                map_output=fitted_map_output,
+                model_type=model_type
+            )
             return
 
         else:

@@ -139,6 +139,22 @@ afterwards. For a quick, non-interactive health check use
 `python run_test_demo.py --test`. See [0_Demo_Test/CONTEXT.md](0_Demo_Test/CONTEXT.md)
 for details.
 
+## Training Methods
+
+The workflow and the training module (`training_module.py`) currently supports three different surrogate training approaches:
+
+| Method                    | Description                                      | MOOSE Export |
+|---------------------------|--------------------------------------------------|--------------|
+| **Grid-based**            | Classical piecewise-polynomial LAROMance method  | ✅ Supported |
+| **Neural PointNet (beta)**| PointNet architecture for point-cloud style data | ❌ Not supported |
+| **Neural MLP (beta)**     | Standard multi-layer perceptron                  | ❌ Not supported |
+
+**MLP**: A standard feed-forward neural network that maps fixed-length input vectors to outputs through fully connected layers.  
+**PointNet**: A neural architecture designed for unordered point sets that uses shared MLPs and symmetric max-pooling to achieve permutation invariance.
+
+> **Note:** Only the **Grid-based** method currently supports export to MOOSE C++ code via `port_surrogate_to_moose.py`. The two neural-network options are experimental.
+
+
 ## Examples
 Below are brief pointers to the example folders that illustrate how to use each
 stage of the pipeline.  Detailed usage instructions are provided in the

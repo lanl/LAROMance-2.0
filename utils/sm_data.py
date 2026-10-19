@@ -801,8 +801,6 @@ def fit_and_transform_output(data : dict, maps : dict):
             data['unmapped']['U'][key] = copy.deepcopy(data['U'][key])
 
     print("Transforming outputs for keys: {}".format(maps.keys()))
-    print("Map dict evm: {}".format(maps['evm']))
-    print("Map dict rhoc: {}".format(maps['rhoc']))
 
     # Define different data scalers and transform data, based "maps" dictionary.
     # Each if / elif is a different scalar call. Add more here if necessary.

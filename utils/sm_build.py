@@ -897,11 +897,14 @@ def run_creep(data: dict, SM: dict, sim_range: range, args: dict | None = None):
             model = SM["mlp_model"]
         elif "mlp_model_path" in SM:
             model_path = SM["mlp_model_path"]
-            print(f"[run_creep] Loading MLP model from: {model_path}")
             checkpoint = torch.load(model_path, map_location="cpu")
+
+            model_type = SM.get("mlp_model_type", "pointnet")   
             input_dim  = len(SM.get("mlp_input_vars", []))
             output_dim = len(SM.get("mlp_output_vars", []))
-            model = get_model("pointnet", input_dim=input_dim, hidden=128, output_dim=output_dim)
+            hidden     = SM.get("mlp_hidden", 128)
+
+            model = get_model(model_type, input_dim=input_dim, hidden=hidden, output_dim=output_dim)
             model.load_state_dict(checkpoint["model_state"])
             model.eval()
         else:

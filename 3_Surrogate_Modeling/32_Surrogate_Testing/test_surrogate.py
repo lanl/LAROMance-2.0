@@ -66,14 +66,31 @@ if args_cli.pickle_files:
     file_list = [fn.strip() for fn in args_cli.pickle_files.split(',') if fn.strip()]
     data_filename = file_list[0]
 else:
-    data_filename = 'Test_Data.pickle'
+    # No pickle file provided on the command line → open a file dialog
+    from PySide6.QtWidgets import QApplication, QFileDialog
+    import sys
 
-with open(os.path.join('./references', data_filename), 'rb') as f:
+    app = QApplication(sys.argv)          # needed for the dialog to work
+    data_filename, _ = QFileDialog.getOpenFileName(
+        None,
+        "Select test data pickle file",
+        "./references",
+        "Pickle Files (*.pkl *.pickle)"
+    )
+    if not data_filename:
+        print("No file selected. Exiting.")
+        sys.exit(0)
+
+with open(data_filename, 'rb') as f:
     DATA = pickle.load(f)
 
-with open(os.path.join('./references', "SM.pickle"), 'rb') as f:
-    SM = pickle.load(f)
+sm_path = os.path.join(os.path.dirname(data_filename), "SM.pickle")
+if not os.path.isfile(sm_path):
+    sm_path = os.path.join('./references', "SM.pickle")   # fallback
 
+with open(sm_path, 'rb') as f:
+    SM = pickle.load(f)
+    
 # ----------------------------------------------------------------------
 # Prompt for oracle-mode if needed
 # ----------------------------------------------------------------------
