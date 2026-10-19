@@ -641,11 +641,6 @@ def transform_nodes(nodes, scalers):
         nodes[:,2] : evm (strain)
         nodes[:,3] : rhoc (cell dislocations)
         nodes[:,4] : rhow (wall dislocations)
-    Input: 
-        nodes : np.ndarray
-            contains nodal coordinates
-        scalers : dict
-            dict containing mapping scaler objects for each input variable (or None)
 
     Output:
         nodes : dict
@@ -690,6 +685,13 @@ def fit_and_transform_input(data : dict, maps : dict):
     scalers = {}
     for key in maps:
         if key in data and maps[key] is not None:
+            if hasattr(maps[key], "fit_transform"):
+                scalers[key] = maps[key]
+                if isinstance(maps[key], (StandardScaler, MinMaxScaler)):
+                    data[key] = maps[key].fit_transform(data[key].reshape(-1,1)).ravel(order="F")
+                else:
+                    data[key] = maps[key].fit_transform(data[key])
+                continue
             if isinstance(maps[key], dict):
                 if "log10" in maps[key].keys():
                     scalers[key] = LogScaler(factor=maps[key]['log10']['factor'], lowerbound=maps[key]['log10']['lowerbound'], upperbound=maps[key]['log10']['upperbound'])
@@ -797,6 +799,10 @@ def fit_and_transform_output(data : dict, maps : dict):
     for key in maps:
         if key in data['U']:
             data['unmapped']['U'][key] = copy.deepcopy(data['U'][key])
+
+    print("Transforming outputs for keys: {}".format(maps.keys()))
+    print("Map dict evm: {}".format(maps['evm']))
+    print("Map dict rhoc: {}".format(maps['rhoc']))
 
     # Define different data scalers and transform data, based "maps" dictionary.
     # Each if / elif is a different scalar call. Add more here if necessary.
@@ -1569,8 +1575,8 @@ def initialize_this_simulation(SM, data_i):
     this_simulation = {}
 
     # Get input and output variable names from SM
-    input_keys = list(SM['mesh_specs']['element_numbers'].keys())
-    output_keys = list(SM['nodal_values'].keys())
+    input_keys = list(SM['input_maps'].keys())
+    output_keys = list(SM['output_maps'].keys())
     time_keys = ['t', 'dt']
 
     # Initialize time stepping values

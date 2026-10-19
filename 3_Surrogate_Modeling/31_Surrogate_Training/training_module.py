@@ -1533,6 +1533,16 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
         plot_button.clicked.connect(self.plot_data)
         self.setup_layout.addWidget(plot_button)
 
+        # run_button = QtWidgets.QPushButton("Run Training")
+        # run_button.clicked.connect(self.run_training)
+        # self.setup_layout.addWidget(run_button)
+
+        # --- Training Method Selector ---
+        self.training_method_combo = QtWidgets.QComboBox()
+        self.training_method_combo.addItems(["Grid-based (LAROMance)", "MLP / Point-based"])
+        self.training_method_combo.setToolTip("Choose the surrogate training method")
+        self.setup_layout.addWidget(self.training_method_combo)
+
         run_button = QtWidgets.QPushButton("Run Training")
         run_button.clicked.connect(self.run_training)
         self.setup_layout.addWidget(run_button)
@@ -3761,36 +3771,41 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
         self.data_canvas_3d.draw()
 
     def _wire_output_selectors(self):
-        # Create/clear an exclusive group for the plot checkboxes
         if not hasattr(self, "_plot_group"):
             self._plot_group = QtWidgets.QButtonGroup(self)
             self._plot_group.setExclusive(True)
 
-        # Remove previously added buttons to avoid duplicates across retrains
         for b in list(self._plot_group.buttons()):
             self._plot_group.removeButton(b)
 
         for cb, plot_cb, _, _ in self.output_var_cbs:
             self._plot_group.addButton(plot_cb)
 
-            # Disconnect old connections to avoid multiple triggers
-            try: cb.currentIndexChanged.disconnect()
-            except TypeError: pass
-            try: plot_cb.toggled.disconnect()
-            except TypeError: pass
+            # Block signals while rewiring to avoid duplicate connections
+            cb.blockSignals(True)
+            plot_cb.blockSignals(True)
 
-            # If this checkbox gets turned ON, replot with its combo's current text
+            # Disconnect any previous connections safely
+            try:
+                cb.currentIndexChanged.disconnect()
+            except Exception:
+                pass
+            try:
+                plot_cb.toggled.disconnect()
+            except Exception:
+                pass
+
+            cb.blockSignals(False)
+            plot_cb.blockSignals(False)
+
             plot_cb.toggled.connect(lambda checked, combo=cb: checked and self.plot_output(combo.currentText()))
-
-            # If the combo changes, replot only if THIS checkbox is the active one
             cb.currentIndexChanged.connect(lambda _, combo=cb, chk=plot_cb: chk.isChecked() and self.plot_output(combo.currentText()))
 
-        # Enforce exactly one checked (if none, check the first; if many, leave only the first)
+        # Ensure exactly one checkbox is checked
         checked = [b for b in self._plot_group.buttons() if b.isChecked()]
         if len(checked) == 0 and self._plot_group.buttons():
             self._plot_group.buttons()[0].setChecked(True)
         elif len(checked) > 1:
-            # keep only the first checked
             for b in checked[1:]:
                 b.setChecked(False)
 
@@ -3821,6 +3836,103 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
                 # TOFIX: add a little margin to make sure all data is inside the ROI
                 roi[k] = [min(data['data'][k]), max(data['data'][k])]
         return roi
+
+
+    # =============
+    # Helpers for training with MLP
+    # =================
+    def _prepare_grid_training_data(self, input_vars, output_vars):
+        """Prepare the concatenated data in the format expected by both training paths."""
+        new_data = {
+            "data": {
+                "x": np.vstack([self.data["data"][k] for k in input_vars]).T,
+                "U": {k: self.data["data"]["U"][k] for k in output_vars},
+            }
+        }
+        for k in input_vars:
+            new_data["data"][k] = self.data["data"][k]
+        return new_data
+
+
+    def _handle_grid_training_results(self, train_output, SM, new_data, input_vars, output_vars):
+        """Store results and update GUI for grid-based training."""
+        self.outputs = {}
+        self.DATA2 = new_data
+        self.SM = SM
+        self.input_vars = input_vars
+
+        # Rebuild self.outputs exactly like the original run_training did
+        for outvar in output_vars:
+            u_mapped = train_output["U"][outvar]
+            uh_mapped = train_output["Usm"][outvar]
+            try:
+                u_physical = SM["output_maps"][outvar].inverse_transform(copy.deepcopy(u_mapped))
+                uh_physical = SM["output_maps"][outvar].inverse_transform(copy.deepcopy(uh_mapped))
+            except Exception:
+                u_physical = SM["output_maps"][outvar].inverse_transform(
+                    copy.deepcopy(u_mapped).reshape(-1, 1)
+                ).ravel(order="F")
+                uh_physical = SM["output_maps"][outvar].inverse_transform(
+                    copy.deepcopy(uh_mapped).reshape(-1, 1)
+                ).ravel(order="F")
+
+            self.outputs[outvar] = {
+                "u_physical": copy.deepcopy(u_physical),
+                "u_mapped": copy.deepcopy(u_mapped),
+                "uh_mapped": copy.deepcopy(uh_mapped),
+                "uh_physical": copy.deepcopy(uh_physical),
+            }
+
+        # Now pick the output that should be shown and plot it
+        selected_output = None
+        for cb, plot_cb, _, _ in self.output_var_cbs:
+            if plot_cb.isChecked():
+                selected_output = cb.currentText()
+                break
+        if not selected_output and output_vars:
+            selected_output = output_vars[0]
+
+        if selected_output and selected_output in self.outputs:
+            out = self.outputs[selected_output]
+            self.update_result_plot(
+                SM=SM,
+                DATA2=new_data,
+                u_physical=out["u_physical"],
+                u_mapped=out["u_mapped"],
+                uh_mapped=out["uh_mapped"],
+                uh_physical=out["uh_physical"],
+                outvar=selected_output,
+                input_vars=input_vars,
+            )
+
+        self._wire_output_selectors()
+        self.save_state()
+
+
+    def _handle_mlp_training_results(self, trained_model, input_vars, output_vars, map_input=None, map_output=None):
+        """Store MLP model + scalers so inference works correctly later."""
+
+        self.SM = {
+            "mlp_model": trained_model,
+            "mlp_input_vars": input_vars,
+            "mlp_output_vars": output_vars,
+            # Fitted scaler objects (needed by MLP inference in run_creep)
+            "input_maps": map_input or self.args.get("fitted_map_input", {}),
+            "output_maps": map_output or self.args.get("fitted_map_output", {}),
+            "training_method": "mlp"
+        }
+
+        with open("./output/SM.pickle", "wb") as f:
+            pickle.dump(self.SM, f)
+
+        QtWidgets.QMessageBox.information(
+            self,
+            "MLP Training Complete",
+            f"MLP model trained successfully!\n\n"
+            f"Inputs : {input_vars}\n"
+            f"Outputs: {output_vars}\n\n"
+            f"Model + fitted scalers saved to SM.pickle"
+        )
 
     def run_training(self):
         if self.data is None:
@@ -3860,6 +3972,54 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
                 "Select at least one input and one output for training."
             )
             return
+
+        # ======================================================
+        # NEW: Choose training method based on GUI selection
+        # ======================================================
+        selected_method = self.training_method_combo.currentText()
+
+        if selected_method == "Grid-based (LAROMance)":
+            print("\n>>> Using GRID-BASED training (original LAROMance path)")
+            new_data = self._prepare_grid_training_data(input_vars, output_vars)
+            train_output, SM = smb.sm_train(
+                self.roi, self.mesh_specs, self.args, DATA=copy.deepcopy(new_data)
+            )
+            self._handle_grid_training_results(train_output, SM, new_data, input_vars, output_vars)
+            return
+
+        elif selected_method == "MLP / Point-based":
+            print("\n>>> Using MLP training")
+            new_data = self._prepare_grid_training_data(input_vars, output_vars)
+
+            # Keep original config dicts – do NOT overwrite args["map_*"] with fitted objects
+            map_input_cfg  = self.args.get("map_input", {})
+            map_output_cfg = self.args.get("map_output", {})
+
+            # Fit once so mlp_train receives real scaler objects (it will use them directly)
+            _, fitted_map_input  = smd.fit_and_transform_input(
+                copy.deepcopy(new_data['data']), maps=map_input_cfg)
+            _, fitted_map_output = smd.fit_and_transform_output(
+                copy.deepcopy(new_data['data']), maps=map_output_cfg)
+
+            # Pass the fitted scalers via a separate key that mlp_train understands
+            mlp_args = dict(self.args)  # shallow copy is enough
+            mlp_args["map_input"]  = fitted_map_input
+            mlp_args["map_output"] = fitted_map_output
+
+            trained_model = smb.mlp_train(
+                self.roi,
+                self.mesh_specs,
+                mlp_args,
+                DATA=copy.deepcopy(new_data)
+            )
+            self._handle_mlp_training_results(trained_model, input_vars, output_vars, map_input=fitted_map_input, map_output=fitted_map_output)
+            return
+
+        else:
+            QtWidgets.QMessageBox.critical(self, "Error", "Unknown training method selected.")
+    
+        # End NEW: Choose training method based on GUI selection
+        # ====================================================
 
         # Determine which output is selected for initial plotting
         selected_output = None

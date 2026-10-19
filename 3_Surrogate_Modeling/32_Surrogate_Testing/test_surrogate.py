@@ -1,6 +1,5 @@
 """
 © 2026. Triad National Security, LLC. All rights reserved.
-
 This program was produced under U.S. Government contract 89233218CNA000001
 for Los Alamos National Laboratory (LANL), which is operated by Triad
 National Security, LLC for the U.S. Department of Energy/National Nuclear
@@ -11,56 +10,36 @@ acting on its behalf a nonexclusive, paid-up, irrevocable worldwide license
 in this material to reproduce, prepare derivative works, distribute copies
 to the public, perform publicly and display publicly, and to permit others
 to do so.
-
 ==============================================================================================================
-
 @author: Andre Ruybalid
 andreruybalid@gmail.com
 -----------------------
-
 Testing script for creep simulations. 
-
 """
-
 import pickle, os, copy, sys
 import numpy as np
 import argparse
 import itertools
-
 sys.path.append(os.path.abspath(os.path.join(__file__, '..', '..', '..')))
 from utils import sm_build as smb
 from utils import sm_plot as smp
 
 # ----------------------------------------------------------------------
-# Load dataset and surrogate model
-# ----------------------------------------------------------------------
-
-# ----------------------------------------------------------------------
-# Command‑line interface for oracle (truth‑injection) runs
+# Command‑line interface
 # ----------------------------------------------------------------------
 parser = argparse.ArgumentParser(
     description="Surrogate model testing with optional truth‑injection (oracle) runs."
 )
-
-# --oracle-mode: no default – will be prompted if missing
 parser.add_argument(
     "--oracle-mode",
     choices=["coupled", "single", "pairwise", "all"],
-    help=(
-        "Select which runs to execute: "
-        "'coupled' – only the default run with no forced outputs; "
-        "'single' – coupled plus one‑output‑forced runs; "
-        "'pairwise' – run baseline plus all configurations where exactly one output is *not* forced (i.e., inject truth for all but one output); "
-        "'all' – execute both the 'single' and 'pairwise' configurations (baseline plus all single‑output and pairwise‑output runs)."
-    ),
+    help="Select which runs to execute.",
 )
-
-# Other optional arguments retain defaults
 parser.add_argument(
     "--force",
     nargs="*",
     default=[],
-    help="Explicitly force specific outputs (e.g., --force rhoc rhow). Overrides --oracle-mode.",
+    help="Explicitly force specific outputs.",
 )
 parser.add_argument(
     "--output-directory",
@@ -71,85 +50,46 @@ parser.add_argument(
     "--store-name-addons",
     default="",
     help="Optional suffix added to result filenames."
- )
-
-# Allow the user to specify an alternate data pickle (or a list of them, mirroring the data‑processing script).
+)
 parser.add_argument(
     "--pickle_files",
     type=str,
     default=None,
-    help="Comma‑separated list of pickle files (relative to the './references' folder) to load as the data set. If omitted the script falls back to the default 'HT9FY26_20pct_test.pickle'."
+    help="Comma‑separated list of pickle files."
 )
-
 args_cli = parser.parse_args()
 
 # ----------------------------------------------------------------------
-# Load the dataset (and surrogate) based on the provided --pickle_files argument
-# ----------------------------------------------------------------------
-# ----------------------------------------------------------------------
-# Determine which pickle file to load.
-# If the user supplies ``--pickle_files`` we keep the original behaviour –
-# take the first entry of the comma‑separated list.  When the flag is omitted we
-# open a small graphical file‑selection dialog (Tkinter) starting in the
-# ``./references`` folder.  This mirrors the interactive experience used in the
-# GUI‑based training module.  If the environment is headless or the user
-# cancels the dialog we fall back to the historic default ``Test_Data.pickle``.
+# Load data and surrogate model
 # ----------------------------------------------------------------------
 if args_cli.pickle_files:
-    # Use the first file from the comma‑separated list, matching the behaviour of the data‑processing utilities.
     file_list = [fn.strip() for fn in args_cli.pickle_files.split(',') if fn.strip()]
     data_filename = file_list[0]
 else:
-    try:
-        import tkinter as tk
-        from tkinter import filedialog
+    data_filename = 'Test_Data.pickle'
 
-        root = tk.Tk()
-        root.withdraw()  # hide the main window
-        initial_dir = os.path.abspath(os.path.join('.', 'references'))
-        selected = filedialog.askopenfilename(
-            title="Select a pickle file for surrogate testing",
-            initialdir=initial_dir,
-            filetypes=[("Pickle files", "*.pickle"), ("All files", "*.*")],
-        )
-        root.update()
-        if selected:
-            data_filename = os.path.basename(selected)
-            print(f"Selected pickle file: {data_filename}")
-        else:
-            print("No file selected – falling back to default Test_Data.pickle.")
-            data_filename = 'Test_Data.pickle'
-    except Exception as e:
-        # Tkinter may fail on headless systems; gracefully use the default.
-        print(f"Unable to open file dialog ({e}); using default Test_Data.pickle.")
-        data_filename = 'Test_Data.pickle'
-
-# Load the selected data pickle
 with open(os.path.join('./references', data_filename), 'rb') as f:
     DATA = pickle.load(f)
 
-# Load the surrogate model (always from SM.pickle in the references folder)
 with open(os.path.join('./references', "SM.pickle"), 'rb') as f:
     SM = pickle.load(f)
 
-# Prompt for oracle-mode if not provided on the command line
+# ----------------------------------------------------------------------
+# Prompt for oracle-mode if needed
+# ----------------------------------------------------------------------
 if args_cli.oracle_mode is None:
     while True:
-        user_input = input(
-            "Select oracle mode (coupled/single/pairwise/all) [coupled]: "
-        ).strip()
+        user_input = input("Select oracle mode (coupled/single/pairwise/all) [coupled]: ").strip()
         if not user_input:
             user_input = "coupled"
         if user_input in ("coupled", "single", "pairwise", "all"):
             args_cli.oracle_mode = user_input
             break
         else:
-            print(
-                "Invalid choice. Please enter 'coupled', 'single', 'pairwise', or 'all'."
-            )
+            print("Invalid choice.")
 
 # ----------------------------------------------------------------------
-# Base argument dictionary used for each validation run
+# Base arguments
 # ----------------------------------------------------------------------
 base_args = {}
 base_args['output_directory'] = args_cli.output_directory
@@ -162,61 +102,69 @@ base_args['correct_negatives'] = True
 base_args['sim_range'] = np.array(list(DATA['data'].keys()))[0:]
 
 # ----------------------------------------------------------------------
-# Identify available coupled outputs in the surrogate model
+# Determine output keys (handle both Grid-based and MLP models)
 # ----------------------------------------------------------------------
-output_keys = list(SM.get('nodal_values', {}).keys())
-if not output_keys:
-    raise RuntimeError("No outputs found in SM['nodal_values'].")
+if "mlp_model_path" in SM or "mlp_model" in SM:
+    print("[test_surrogate] MLP model detected.")
+    output_keys = SM.get("mlp_output_vars", [])
+    is_mlp = True
+else:
+    output_keys = list(SM.get('nodal_values', {}).keys())
+    is_mlp = False
 
+if not output_keys:
+    raise RuntimeError("No outputs found in SM (neither 'nodal_values' nor 'mlp_output_vars').")
+
+# ----------------------------------------------------------------------
+# Main testing function
+# ----------------------------------------------------------------------
 def run_testing(forced_outputs):
-    """
-    Execute sm_test for a specific set of forced outputs and generate plots.
-    """
     run_args = base_args.copy()
 
-    # Set force flags for requested outputs
+    # Set force flags
     for key in output_keys:
         flag = f'force_{key}'
         if key in forced_outputs:
             run_args[flag] = True
-            run_args[f'{flag}_end_point'] = 1e16   # default end‑point, can be tuned
+            run_args[f'{flag}_end_point'] = 1e16
         else:
             run_args.pop(flag, None)
             run_args.pop(f'{flag}_end_point', None)
 
-    # Build a unique name addon for this run
+    # Name addon
     if forced_outputs:
         forced_suffix = "_".join(sorted(forced_outputs))
         run_args['store_name_addon'] = f"{forced_suffix}-oracle"
     else:
         run_args['store_name_addon'] = "coupled"
 
-    # Include any user‑provided extra suffix
     if args_cli.store_name_addons:
         run_args['store_name_addon'] += f"_{args_cli.store_name_addons}"
 
-    # ------------------------------------------------------------------
-    # Run validation and plot for each output
-    # ------------------------------------------------------------------
-    test_results = smb.sm_test(SM, run_args, DATA=copy.deepcopy(DATA))
-  
+    # === Detect inference path ===
+    if is_mlp or "mlp_model_path" in SM or "mlp_model" in SM:
+        print("[test_surrogate] Using MLP inference path")
+        run_args["use_mlp"] = True
+        run_args["mlp_model"] = SM.get("mlp_model")
+        run_args["mlp_input_vars"] = SM.get("mlp_input_vars", [])
+        run_args["mlp_output_vars"] = SM.get("mlp_output_vars", [])
+    else:
+        print("[test_surrogate] Using Grid-based inference path")
 
-    # Determine which keys to plot:
-    #   • In coupled mode (no forced outputs) plot all available outputs.
-    #   • In forced (truth‑injection) mode, plot all outputs except those forced.
+    # Run testing
+    test_results = smb.sm_test(SM, run_args, DATA=copy.deepcopy(DATA))
+
+    # Determine which outputs to plot
     if not forced_outputs:
         keys_to_plot = output_keys
-        print("Running coupled validation (no forced outputs). Plotting all available outputs. {}".format(keys_to_plot))
+        print(f"Running coupled validation. Plotting all outputs: {keys_to_plot}")
     else:
         keys_to_plot = [k for k in output_keys if k not in forced_outputs]
+
     for key in keys_to_plot:
-        # Skip plotting for outputs that were forced (truth‑injected) in this run
-        if key in forced_outputs:
-            continue
-        # Inform the user which output is being plotted for this configuration
         print(f"Generating plot for output '{key}' (forced set: {sorted(forced_outputs)})")
         try:
-                smp.test_report_plots(
+            smp.test_report_plots(
                 test_results,
                 z_key=key,
                 max_time_in_maps=1e9,
@@ -224,10 +172,10 @@ def run_testing(forced_outputs):
                 path=run_args['output_directory'],
                 name_addon=run_args['store_name_addon'],
                 dark=True
-                )
+            )
         except Exception as e:
-                print(f"Error generating plots for output '{key}': {e}. Try running without surface plots (plot_surf=False).")
-                smp.test_report_plots(
+            print(f"Error with surface plots for '{key}': {e}. Retrying without surface plots.")
+            smp.test_report_plots(
                 test_results,
                 z_key=key,
                 max_time_in_maps=1e9,
@@ -235,35 +183,30 @@ def run_testing(forced_outputs):
                 path=run_args['output_directory'],
                 name_addon=run_args['store_name_addon'],
                 dark=True
-                )
-                
+            )
+
 # ----------------------------------------------------------------------
-# Determine which configurations to execute
+# Determine which configurations to run
 # ----------------------------------------------------------------------
 if args_cli.force:
-    # User explicitly specified which outputs to force (single set)
     forced_sets = [set(args_cli.force)]
 else:
     mode = args_cli.oracle_mode
     if mode == "coupled":
-        forced_sets = [set()]                                 # no forced outputs
+        forced_sets = [set()]
     elif mode == "single":
-        forced_sets = [set()] + [{key} for key in output_keys]  # include coupled and each single forced run
+        forced_sets = [set()] + [{key} for key in output_keys]
     elif mode == "pairwise":
-        # Baseline + each configuration where exactly one output is omitted (i.e., force all others)
-        forced_sets = [set()]                                 # baseline (no forced outputs)
-        for key in output_keys:
-            forced_sets.append(set(output_keys) - {key})
+        forced_sets = [set()] + [set(output_keys) - {key} for key in output_keys]
     elif mode == "all":
-        # Combine single‑output and pairwise (all‑but‑one) configurations, baseline only once
         single_sets = [{key} for key in output_keys]
         pairwise_sets = [set(output_keys) - {key} for key in output_keys]
         forced_sets = [set()] + single_sets + pairwise_sets
     else:
-        forced_sets = [set()]  # safety fallback
+        forced_sets = [set()]
 
 # ----------------------------------------------------------------------
-# Execute validation for each configuration
+# Execute all configurations
 # ----------------------------------------------------------------------
 for forced in forced_sets:
     run_testing(forced)
