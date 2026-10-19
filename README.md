@@ -77,7 +77,8 @@ pip install \
     pyDOE2 \
     tqdm \
     rtree \
-    scikit-learn
+    scikit-learn \
+    torch
 ```
 ## Stages and Folder Structure
 The framework is split into four self‑contained stages—each in its own folder (`1_Data_Generation`, `2_Data_Processing`, …). 
