@@ -3582,11 +3582,56 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
         canvas.draw()
 
 
-    # TO FIX: mixed up data and results canvases
+    def _update_result_plot_neural(self, SM, DATA2, u_physical, u_mapped,
+                               uh_physical, uh_mapped, outvar, input_vars):
+        """Plot training results for neural (MLP/PointNet) models."""
+        print("[update_result_plot] Neural model detected — using simplified plotting path.")
+
+        # Remove old canvases
+        for attr in ("data_canvas_2d", "data_canvas_3d"):
+            canvas = getattr(self, attr, None)
+            if canvas:
+                idx = self.result_plot_stack.indexOf(canvas)
+                if idx != -1:
+                    self.result_plot_stack.removeWidget(canvas)
+                canvas.setParent(None)
+                canvas.deleteLater()
+                setattr(self, attr, None)
+
+        # Simple 2D scatter: reference vs prediction
+        fig = Figure(figsize=(6, 5))
+        ax = fig.add_subplot(111)
+
+        ax.scatter(u_physical, uh_physical, s=8, alpha=0.6, edgecolors='k', linewidths=0.3)
+        ax.plot([u_physical.min(), u_physical.max()],
+                [u_physical.min(), u_physical.max()], 'r--', lw=1, label='Ideal')
+
+        ax.set_xlabel(f"{outvar} (reference)")
+        ax.set_ylabel(f"{outvar} (prediction)")
+        ax.set_title(f"Neural Model Fit: {outvar}")
+        ax.legend()
+        ax.grid(True, alpha=0.3)
+
+        self.data_canvas_2d = FigureCanvas(fig)
+        self.result_plot_stack.addWidget(self.data_canvas_2d)
+        self.result_plot_stack.setCurrentIndex(0)
+        self.data_canvas_2d.draw()
+
     def update_result_plot(self, SM=None, DATA2=None, u_physical=None, u_mapped=None,
                        uh_physical=None, uh_mapped=None, outvar=None,
                        input_vars=None, rel_err=None):
+
+
         print("Update result plot.")
+
+        is_neural = "mlp_model" in SM or "mlp_model_path" in SM or SM.get("training_method") == "mlp"
+
+        if is_neural:
+            # Simpler plotting path for MLP / PointNet
+            self._update_result_plot_neural(SM, DATA2, u_physical, u_mapped,
+                                            uh_physical, uh_mapped, outvar, input_vars)
+            return
+
         # Defensive: avoid incorrect call (e.g., from toggle button passing bool)
         if not isinstance(SM, dict):
             print("Recovered from bad toggle-triggered call.")
@@ -3894,6 +3939,50 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
             new_data["data"][k] = self.data["data"][k]
         return new_data
 
+    def _run_mlp_inference_on_training_data(self, trained_model, new_data, input_vars, output_vars,
+                                        fitted_map_input, fitted_map_output):
+        """Run the trained neural net on the training points and return the same
+        structure that the grid-based path puts into self.outputs."""
+        import torch
+        from sklearn.preprocessing import StandardScaler, MinMaxScaler
+
+        X_list = [np.asarray(new_data["data"][var], dtype=np.float32) for var in input_vars]
+        X = np.column_stack(X_list)
+
+        # Apply input scalers
+        X_scaled = X.copy()
+        for i, var in enumerate(input_vars):
+            if var in fitted_map_input:
+                scaler = fitted_map_input[var]
+                X_scaled[:, i] = scaler.transform(X[:, i].reshape(-1, 1)).ravel()
+
+        # Forward pass
+        with torch.no_grad():
+            X_tensor = torch.tensor(X_scaled, dtype=torch.float32)
+            y_pred = trained_model(X_tensor).cpu().numpy()
+
+        outputs = {}
+        for j, var in enumerate(output_vars):
+            uh_mapped = y_pred[:, j]
+            u_mapped  = np.asarray(new_data["data"]["U"][var], dtype=np.float32)
+            scaler = fitted_map_output[var]
+
+            if isinstance(scaler, (StandardScaler, MinMaxScaler)):
+                # sklearn scalers expect shape (N, 1)
+                uh_physical = scaler.inverse_transform(uh_mapped.reshape(-1, 1)).ravel()
+                u_physical  = scaler.inverse_transform(u_mapped.reshape(-1, 1)).ravel()
+            else:
+                # custom scalers (SymLogScaler, LogScaler, CompressScaler, …) expect 1D
+                uh_physical = scaler.inverse_transform(uh_mapped)
+                u_physical  = scaler.inverse_transform(u_mapped)
+
+            outputs[var] = {
+                "u_physical": u_physical,
+                "u_mapped": u_mapped,
+                "uh_mapped": uh_mapped,
+                "uh_physical": uh_physical,
+            }
+        return outputs
 
     def _handle_grid_training_results(self, train_output, SM, new_data, input_vars, output_vars):
         """Store results and update GUI for grid-based training."""
@@ -3950,9 +4039,10 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
         self.save_state()
 
 
-    def _handle_mlp_training_results(self, trained_model, input_vars, output_vars, map_input=None, map_output=None, model_type=None):
-        """Store MLP model + scalers so inference works correctly later."""
-
+    def _handle_mlp_training_results(self, trained_model, input_vars, output_vars,
+                                 map_input=None, map_output=None, model_type=None,
+                                 new_data=None):
+        """Store MLP model + scalers and run inference on training data for plotting."""
         self.SM = {
             "mlp_model": trained_model,
             "mlp_input_vars": input_vars,
@@ -3967,12 +4057,45 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
         with open("./output/SM.pickle", "wb") as f:
             pickle.dump(self.SM, f)
 
+        # === NEW: Run inference on training data so plots appear ===
+        if new_data is not None and map_input is not None and map_output is not None:
+            self.outputs = self._run_mlp_inference_on_training_data(
+                trained_model, new_data, input_vars, output_vars, map_input, map_output
+            )
+            self.DATA2 = new_data
+            self.input_vars = input_vars
+
+            # Pick first checked output (or first available) and plot
+            selected_output = None
+            for cb, plot_cb, _, _ in self.output_var_cbs:
+                if plot_cb.isChecked():
+                    selected_output = cb.currentText()
+                    break
+            if not selected_output and output_vars:
+                selected_output = output_vars[0]
+
+            if selected_output and selected_output in self.outputs:
+                out = self.outputs[selected_output]
+                self.update_result_plot(
+                    SM=self.SM,
+                    DATA2=new_data,
+                    u_physical=out["u_physical"],
+                    u_mapped=out["u_mapped"],
+                    uh_mapped=out["uh_mapped"],
+                    uh_physical=out["uh_physical"],
+                    outvar=selected_output,
+                    input_vars=input_vars,
+                )
+
+            self._wire_output_selectors()
+
         QtWidgets.QMessageBox.information(
             self,
-            "MLP Training Complete",
-            f"MLP model trained successfully!\n\n"
-            f"Inputs : {input_vars}\n"
-            f"Outputs: {output_vars}\n\n"
+            "Neural Net Training Complete",
+            f"Model trained successfully!\n\n"
+            f"Architecture : {self.SM['mlp_model_type']}\n"
+            f"Inputs       : {input_vars}\n"
+            f"Outputs      : {output_vars}\n\n"
             f"Model + fitted scalers saved to SM.pickle"
         )
 
@@ -4064,7 +4187,8 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
                 trained_model, input_vars, output_vars,
                 map_input=fitted_map_input,
                 map_output=fitted_map_output,
-                model_type=model_type
+                model_type=model_type,
+                new_data=new_data
             )
             return
 

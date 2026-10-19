@@ -81,7 +81,7 @@ else:
         print("No file selected. Exiting.")
         sys.exit(0)
 
-with open(data_filename, 'rb') as f:
+with open(os.path.join('./references', data_filename), 'rb') as f:
     DATA = pickle.load(f)
 
 sm_path = os.path.join(os.path.dirname(data_filename), "SM.pickle")

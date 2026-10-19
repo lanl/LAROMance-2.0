@@ -1341,36 +1341,43 @@ def stage4(sm_path, results, interactive):
 # Stage 5 - Clean Pipeline (dry run only)
 # ----------------------------------------------------------------------
 def stage5(results, interactive):
-    banner("Stage 5 - Clean Pipeline (dry-run)")
+    banner("Stage 5 - Clean Pipeline")
     explain(
         "WHAT STAGE 5 DOES\n"
         "The clean-up script removes generated artefacts from stages 1-4 (the\n"
         "contents of their output/ and references/ folders) while preserving your\n"
         "own source data, documentation (CONTEXT.md/README.md), and the MOOSE\n"
-        "base/ templates. Run it to reset the repo to a clean state between runs.\n"
-        "\n"
-        "DRY-RUN ONLY\n"
-        "The demo runs it with --dry-run, which DELETES NOTHING. It only PREVIEWS\n"
-        "the files that a real clean-up would remove - listed below as\n"
-        "'Would remove: ...'. Drop the --dry-run flag to actually delete them."
+        "base/ templates. Run it to reset the repo to a clean state between runs."
     )
+
     script = os.path.join(STAGE5_DIR, "clean_pipeline.sh")
     assert_exists(script, results)
-    section("Previewing files that a clean-up would remove")
-    say_cmd("cd 5_Clean_Pipeline && ./clean_pipeline.sh --dry-run")
-    code, out = run_subprocess(["bash", "clean_pipeline.sh", "--dry-run"], STAGE5_DIR)
-    # Surface the preview so the user actually sees which files WOULD be deleted.
-    show_output(out, label="clean_pipeline.sh --dry-run preview", n=80)
-    if code != 0:
-        fail("clean_pipeline.sh --dry-run exited with code {}".format(code))
-        results.append(("stage5 dry-run exit 0", False))
+
+    if KEEP_ARTIFACTS:
+        # --demo or --test --keep → only preview (dry-run)
+        section("Previewing files that a clean-up would remove")
+        say_cmd("cd 5_Clean_Pipeline && ./clean_pipeline.sh --dry-run")
+        code, out = run_subprocess(["bash", "clean_pipeline.sh", "--dry-run"], STAGE5_DIR)
+        show_output(out, label="clean_pipeline.sh --dry-run preview", n=80)
+        if code != 0:
+            fail("clean_pipeline.sh --dry-run exited with code {}".format(code))
+            results.append(("stage5 dry-run exit 0", False))
+        else:
+            ok("clean_pipeline.sh --dry-run completed (preview only, no files deleted)")
+            results.append(("stage5 dry-run exit 0", True))
     else:
-        if KEEP_ARTIFACTS:
-            ok("clean_pipeline.sh --dry-run completed "
-               "(preview only, no files deleted)")
+        # Plain --test → actually delete the generated artifacts
+        section("Cleaning up generated artifacts")
+        say_cmd("cd 5_Clean_Pipeline && ./clean_pipeline.sh")
+        code, out = run_subprocess(["bash", "clean_pipeline.sh"], STAGE5_DIR)
+        show_output(out, label="clean_pipeline.sh output", n=80)
+        if code != 0:
+            fail("clean_pipeline.sh exited with code {}".format(code))
+            results.append(("stage5 clean exit 0", False))
         else:
             ok("clean_pipeline.sh completed: artifacts removed")
-        results.append(("stage5 dry-run exit 0", True))
+            results.append(("stage5 clean exit 0", True))
+
     if DEMO_MODE:
         explain(
             "ALL DONE - YOUR PIPELINE IS NOW FULLY POPULATED\n"
