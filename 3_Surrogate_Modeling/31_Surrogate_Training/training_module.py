@@ -3624,14 +3624,6 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
 
         print("Update result plot.")
 
-        is_neural = "mlp_model" in SM or "mlp_model_path" in SM or SM.get("training_method") == "mlp"
-
-        if is_neural:
-            # Simpler plotting path for MLP / PointNet
-            self._update_result_plot_neural(SM, DATA2, u_physical, u_mapped,
-                                            uh_physical, uh_mapped, outvar, input_vars)
-            return
-
         # Defensive: avoid incorrect call (e.g., from toggle button passing bool)
         if not isinstance(SM, dict):
             print("Recovered from bad toggle-triggered call.")
@@ -3653,6 +3645,16 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
             self._cached_uhphysical = uh_physical
             self._cached_outvar = outvar
             self._cached_input_vars = input_vars
+
+
+        # ============================================================
+        # NEW: Detect neural model (MLP / PointNet)
+        # ============================================================
+        is_neural = (
+            "mlp_model" in SM
+            or "mlp_model_path" in SM
+            or SM.get("training_method") == "mlp"
+        )
 
         # Remember which page user was on (only matters for multi-var)
         current_index = self.result_plot_stack.currentIndex() if len(input_vars) > 1 else 0
@@ -3677,13 +3679,13 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
             fig = Figure(figsize=(6, 5))
             ax = fig.add_subplot(111)
             x = DATA2['data'][input_vars[0]]
-            nodes = smd.backtransform_nodes(copy.deepcopy(SM['mesh']['nodes']), SM['input_maps']).flatten()
-
-            # FIX: use the correct outvar map (was 'u' before)
-            nodal_values = smd.backtransform_output(
-                copy.deepcopy(SM['nodal_values'][outvar]),
-                SM['output_maps'][outvar]
-            ).flatten()
+            if not is_neural:
+                nodes = smd.backtransform_nodes(copy.deepcopy(SM['mesh']['nodes']), SM['input_maps']).flatten()
+                # FIX: use the correct outvar map (was 'u' before)
+                nodal_values = smd.backtransform_output(
+                    copy.deepcopy(SM['nodal_values'][outvar]),
+                    SM['output_maps'][outvar]
+                ).flatten()
 
             smp.plotxy(x, u_physical, color='g', ax=ax)
             smp.plotxy(x, uh_physical, color='r', marker='-', ax=ax)
@@ -3769,11 +3771,12 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
         ax1.set_aspect('auto')
         ax1.autoscale(enable=True, axis='both', tight=True)
 
-        smp.visualize_mesh(
-            smd.backtransform_nodes(copy.deepcopy(SM['mesh']['nodes']), SM['input_maps']),
-            SM['mesh']['conn'], dim=2, ax=ax1,
-            show_node_numbers=False, show_elem_numbers=False
-        )
+        if not is_neural:
+            smp.visualize_mesh(
+                smd.backtransform_nodes(copy.deepcopy(SM['mesh']['nodes']), SM['input_maps']),
+                SM['mesh']['conn'], dim=2, ax=ax1,
+                show_node_numbers=False, show_elem_numbers=False
+            )
 
         self.data_canvas_2d = FigureCanvas(fig1)
         self.setup_interactive_labels(fig1)
@@ -3806,33 +3809,33 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
             ax2.plot_trisurf(x1_ds, x2_ds, uh_ds, cmap='viridis', alpha=0.4, edgecolors='k')
 
         if self.toggle_nodes.isChecked():
-            
-            # Backtransform nodal coordinates to physical space
-            nodes_xy = smd.backtransform_nodes(
-                copy.deepcopy(SM['mesh']['nodes']),
-                SM['input_maps']
-            )
+            if not is_neural:
+                # Backtransform nodal coordinates to physical space
+                nodes_xy = smd.backtransform_nodes(
+                    copy.deepcopy(SM['mesh']['nodes']),
+                    SM['input_maps']
+                )
 
-            # Backtransform nodal values to physical space (or not)
-            if self.toggle_mapped_output_in_plots.isChecked() == False:
-                nodal_values = smd.backtransform_output(
-                    copy.deepcopy(SM['nodal_values'][outvar]),
-                    SM['output_maps'][outvar]
-                ).flatten()
-            elif self.toggle_mapped_output_in_plots.isChecked():
-                nodal_values = copy.deepcopy(SM['nodal_values'][outvar])
+                # Backtransform nodal values to physical space (or not)
+                if self.toggle_mapped_output_in_plots.isChecked() == False:
+                    nodal_values = smd.backtransform_output(
+                        copy.deepcopy(SM['nodal_values'][outvar]),
+                        SM['output_maps'][outvar]
+                    ).flatten()
+                elif self.toggle_mapped_output_in_plots.isChecked():
+                    nodal_values = copy.deepcopy(SM['nodal_values'][outvar])
 
-            # Assume 2 input dims, so take first 2 cols as x,y
-            x_nodes = nodes_xy[:, 0]
-            y_nodes = nodes_xy[:, 1]
-            z_nodes = nodal_values
+                # Assume 2 input dims, so take first 2 cols as x,y
+                x_nodes = nodes_xy[:, 0]
+                y_nodes = nodes_xy[:, 1]
+                z_nodes = nodal_values
 
-            # Scatter plot of nodes
-            ax2.scatter(
-                x_nodes, y_nodes, z_nodes,
-                marker='^', color='yellow', s=50,
-                edgecolors='green', alpha=0.8, label='Nodal values'
-            )
+                # Scatter plot of nodes
+                ax2.scatter(
+                    x_nodes, y_nodes, z_nodes,
+                    marker='^', color='yellow', s=50,
+                    edgecolors='green', alpha=0.8, label='Nodal values'
+                )
 
 
         ax2.legend(loc="best")
@@ -3964,17 +3967,16 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
         outputs = {}
         for j, var in enumerate(output_vars):
             uh_mapped = y_pred[:, j]
-            u_mapped  = np.asarray(new_data["data"]["U"][var], dtype=np.float32)
+            u_physical  = np.asarray(new_data["data"]["U"][var], dtype=np.float32)
+
             scaler = fitted_map_output[var]
 
             if isinstance(scaler, (StandardScaler, MinMaxScaler)):
-                # sklearn scalers expect shape (N, 1)
                 uh_physical = scaler.inverse_transform(uh_mapped.reshape(-1, 1)).ravel()
-                u_physical  = scaler.inverse_transform(u_mapped.reshape(-1, 1)).ravel()
+                u_mapped   = scaler.transform(u_physical.reshape(-1, 1)).ravel()
             else:
-                # custom scalers (SymLogScaler, LogScaler, CompressScaler, …) expect 1D
                 uh_physical = scaler.inverse_transform(uh_mapped)
-                u_physical  = scaler.inverse_transform(u_mapped)
+                u_mapped   = scaler.transform(u_physical)
 
             outputs[var] = {
                 "u_physical": u_physical,
@@ -3982,6 +3984,20 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
                 "uh_mapped": uh_mapped,
                 "uh_physical": uh_physical,
             }
+
+        # === NEW: Create minimal dummy mesh so update_result_plot doesn't crash ===
+        # We create a tiny dummy mesh so the plotting code can at least run.
+        # The actual neural results are plotted via the data points, not the mesh.
+        n_points = len(X)
+        dummy_nodes = np.zeros((n_points, len(input_vars)))
+        dummy_conn = np.array([[0, 1, 2]]) if n_points >= 3 else np.array([[0]])
+
+        self.SM["mesh"] = {
+            "nodes": dummy_nodes,
+            "conn": dummy_conn,
+        }
+        self.SM["nodal_values"] = {var: np.zeros(n_points) for var in output_vars}
+
         return outputs
 
     def _handle_grid_training_results(self, train_output, SM, new_data, input_vars, output_vars):
