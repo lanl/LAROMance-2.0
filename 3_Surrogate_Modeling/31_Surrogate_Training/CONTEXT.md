@@ -19,6 +19,25 @@ The GUI provides three training options via the **Training Method** selector:
 
 > When a neural method is selected, additional hyperparameters (epochs, hidden size, batch size, learning rate) become available.
 
+**Neural Network Hyperparameters:**
+
+| Hyperparameter   | What it controls                          | Too Low                                      | Too High                                      | Rule of Thumb |
+|------------------|-------------------------------------------|----------------------------------------------|-----------------------------------------------|---------------|
+| **Hidden Size**  | Model capacity (number of neurons)        | Underfitting – model too simple to capture trends | Overfitting + slower training + more parameters | Start with 64–256. Increase if training error stays high. |
+| **Batch Size**   | Number of samples per gradient update     | Noisy gradients, slower but sometimes better generalization | Smoother but potentially poorer generalization | 512–2048 is usually a good range for surrogate modeling. |
+| **Learning Rate**| Step size of weight updates               | Very slow convergence                        | Divergence or unstable training               | Start at `1e-3`. Reduce to `5e-4` or `1e-4` if training is unstable. |
+| **Epochs**       | Number of full passes over the training data | Underfitting (model hasn’t learned enough)   | Overfitting (model memorizes training data)   | 30–100 for most surrogate problems. Use early stopping if possible. |
+
+**Rules of Thumb**
+
+- **Start simple**: Begin with `Hidden Size = 128`, `Batch Size = 1024`, `Learning Rate = 1e-3`, and `Epochs = 50`.
+- **Hidden Size**: Increase only if the training loss plateaus at a high value. Doubling it significantly increases training time.
+- **Batch Size**: Larger batches (≥ 1024) tend to work well for surrogate modeling because the loss landscape is relatively smooth. Very small batches (< 256) are rarely beneficial here.
+- **Learning Rate**: If the loss oscillates or increases, reduce the learning rate by a factor of 2–5. If the loss decreases very slowly, try increasing it slightly.
+- **Epochs**: Monitor the training loss. If it stops improving for many epochs, further training is usually not helpful (and can lead to overfitting).
+- **Interaction**: These parameters are coupled. A larger hidden size often benefits from a slightly lower learning rate and more epochs.
+  
+
 **Important:** The MOOSE export pipeline (`port_surrogate_to_moose.py`) only supports models trained with the **Grid-based** method. Neural models will be rejected with a clear error message.
 
 A complete User Manual for the GUI is located in [LAROMANCE_USER_MANUAL.pdf](3_Surrogate_Modeling/31_Surrogate_Training/doc/LAROMANCE_USER_MANUAL.pdf). Note this manual does not describe the more recently added neural network methods (Pointnet/MLP).

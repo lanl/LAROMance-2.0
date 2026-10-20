@@ -82,7 +82,6 @@ DEFAULT_SAMPLES = os.path.abspath(os.path.join(
 DEFAULT_OUT = os.path.join(_THIS_DIR, "output", "Cantera_kinetics_runs.pickle")
 
 
-
 def _run_one(task):
     """Worker: integrate one case. ``task`` = (idx, T0, P, phi, kwargs).
 
