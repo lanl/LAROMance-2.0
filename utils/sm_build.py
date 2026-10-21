@@ -476,7 +476,6 @@ def sm_train(roi: dict, mesh_specs: dict, args : dict, DATA : dict = None, data_
 
     # Scale the nodes if input maps are supplied
     if (args['map_input'] is not False or args['map_input'] is not None) and SM['input_maps'] is not None:
-        print("\nTransform nodal coordinates.")
         sys.stdout.flush()
         nodes = smd.transform_nodes(nodes, SM['input_maps'])
     
@@ -496,11 +495,9 @@ def sm_train(roi: dict, mesh_specs: dict, args : dict, DATA : dict = None, data_
         try:
             from utils import sm_rtree
             if sm_rtree.RTREE_AVAILABLE:
-                print("\nBuilding R-tree spatial index for future queries...")
                 sys.stdout.flush()
                 rtree_index = sm_rtree.create_mesh_rtree_index(nodes, conn, mesh_specs)
                 SM['mesh']['rtree_index_data'] = rtree_index.to_dict()
-                print("R-tree index built and stored in surrogate model.")
                 sys.stdout.flush()
             else:
                 print("\nWarning: rtree package detected but spatial index not available.")
@@ -944,7 +941,7 @@ def run_creep(data: dict, SM: dict, sim_range: range, args: dict | None = None):
     # 2. Common simulation loop (grid-based logic kept intact)
     # ============================================================
     creep_output = {}
-    total_iterations = sum(len(data[i]['evm']) for i in data)
+    total_iterations = sum(len(data[i]['t']) for i in data)
 
     with tqdm(total=total_iterations) as pbar:
         print("Begin simulations...")
@@ -1013,7 +1010,7 @@ def run_creep(data: dict, SM: dict, sim_range: range, args: dict | None = None):
                         outputs[var] = np.array([rate])
 
                 else:
-                    # --- Grid-based rate prediction (original code) ---
+                    # --- Grid-based rate prediction ---
                     this_input_point = []
                     this_input_point_dict = {}
                     for key in input_keys:
@@ -1061,8 +1058,10 @@ def run_creep(data: dict, SM: dict, sim_range: range, args: dict | None = None):
                 for key in output_keys:
                     if key in input_keys:
                         new_values[key] = this_simulation[key][-1] + updates[key]
+
                     else:
-                        print("\nWARNING: No known input variable aligns with updates from outputs.")
+                        print("\nWARNING: No known input variable aligns with updates from output {}.".format(key))
+
 
                 # adaptive time stepping, shrinking, bounds checking, etc.
                 # (the rest of the original grid-based code stays unchanged)
@@ -1094,6 +1093,7 @@ def run_creep(data: dict, SM: dict, sim_range: range, args: dict | None = None):
                 # Bounds checking / clipping (unchanged)
                 clipped_rhoc = None
                 if rate_provider == 'grid':
+                    # only applicable for the grid-based method 
                     for key in updates.keys():
                         if key not in SM['roi'] or key not in output_keys:
                             continue
@@ -1112,14 +1112,6 @@ def run_creep(data: dict, SM: dict, sim_range: range, args: dict | None = None):
                 for k in new_values:
                     if np.isinf(new_values[k]):
                         while_condition = False
-
-                # # store rate
-                # for key in output_keys:
-                #     this_simulation['U'][key].append(outputs[key][0])
-
-                # # store accumulated value
-                # for key in new_values:
-                #     this_simulation[key].append(new_values[key])
 
                 # update time, dt, counters, etc. (unchanged)
                 while_condition = while_condition and (
@@ -1140,10 +1132,11 @@ def run_creep(data: dict, SM: dict, sim_range: range, args: dict | None = None):
                 for key in output_keys:
                     this_simulation['U'][key].append(outputs[key][0])
                 if while_condition:
+                    # update the other (not-coupled) inputs.
                     for key in input_keys:
-                        if key not in new_values:
+                        if key not in new_values and key not in ['t']:
+                            # make sure not to include 't' if it's also part of 'input_keys'. 't' will be added below separately.
                             this_simulation[key].append(data[i][key][t+1])
-
                 this_simulation['t'].append(time_accum)
                 this_simulation['shrink'] = shrink
                 this_simulation['simulation_time'] = time.time() - starttime

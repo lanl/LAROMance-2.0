@@ -88,16 +88,37 @@ Or the user can immediately add flags to the call if the user knows.
 python load_and_plot_data.py --pickle_files Creep_runs_with_dislocation_density_tracking.pickle  --max_length 150 --split_data 80 --concat --anchor_points 0.0,1e-14,1e-12,1e-11,1e-10,1e-9,1e-8,1e-7,1e-6,1e-5,1e-4,1e-2,0.2 --input_keys vmJ2,temperature --output_keys rhoc,U[evm],U[rhoc]
 ```
 
-- `--pickle_files` Pickle files to include in the data processor, can be more than 1
-- `--max_length N` Trim each time‑series to __N__ points (e.g., 150).
-- `--split_data P` Allocate __P %__ of the data to the training set (remaining to testing).
-- `--anchor_points a,b,c,…` Interpolate all fields at the specified anchor values (e.g., `0.0,1e-12,1e-10,…`).
-- `--input_keys key1,key2,…` Select the listed columns as __inputs__ for the surrogate model scatter plots (e.g., `vmJ2,temperature`).
-- `--output_keys key1,key2,…` Select the listed columns as __outputs__ for the surrogate model (e.g., `rhoc,U[evm],U[rhoc]`).
-- `--concat` Concatenate the training data.
-- `--correct_rhoc` Only needed for data for incorrectly saved data where the dislocation density should be transformed to dislocation density rates.
+### Data loading
+- `--pickle_files f1,f2,…`: Pickle files to include (comma-separated, relative to the `references` folder). If omitted, the single hard-coded `filename` is loaded.
+- `--split_data P`: Percentage (0-100) of curated simulations used for training. The rest are used for testing.
+- `--anchor_points a,b,c,…`: Interpolate all fields at these anchor values for optional data augmentation (e.g., `0.0,1e-12,1e-10`).
+- `--rename U[dT_dt]:T`: Rename input/output dictionary labels. Tip: outputs are stored in the nested dictionary `U` within the data dict. When output and input names are equal, the testing procedure will treat them as a coupled input/ouptut: the update in input comes from the output rate form multiplied by the time step. Example:
+   ```bash 
+   U[dT_dt]:T,U[dCH4_dt]:CH4,U[dO2_dt]:O2,U[dCO2_dt]:CO2
+   ```
 
+### Down-sampling
+- `--max_length N`: Trim each time series to N points after down-sampling (e.g., `150`). Mutually exclusive with `--factor`.
+- `--factor F`: Down-sample by factor F (e.g., `1.3` reduces points by ~30%). Mutually exclusive with `--max_length`.
+- `--downsample_key KEY`: Per-simulation input array used as the monotonic axis for down-sampling. Default is `evm` (strain) for creep datasets, falling back to `t` (time) when `evm` is absent (e.g., Cantera kinetics example).
+
+### Model inputs and outputs
+- `--input_keys k1,k2,…`: Columns used as inputs for the surrogate model scatter plots (e.g., `vmJ2,temperature`).
+- `--output_keys k1,k2,…`: Columns used as outputs for the surrogate model (e.g., `rhoc,U[evm],U[rhoc]`).
+
+### Filtering and trimming
+- `--x_trim VAR` + `--x_max X`: Remove array entries where `VAR` exceeds `X`. Must be used together.
+- `--y_filter VAR` + `--y_max Y`: Remove whole simulations where `VAR` exceeds `Y`. Must be used together.
+
+### Plotting and processing
+- `--concat`: Concatenate the training data and generate the histogram plot. Default: off.
+- `--correct_rhoc`: Only for incorrectly saved data where dislocation density should be transformed to dislocation density rates. Default: off.
+- `--ylog` / `--no-ylog`: Enable or disable a logarithmic y-axis on trace plots. Default: enabled.
+- `--xlog` / `--no-xlog`: Enable or disable a logarithmic x-axis on trace plots. Default: disabled.
 ---
+
+### rename
+
 
 **Detailed Guidance for intelligent user (human or artificial)**
 

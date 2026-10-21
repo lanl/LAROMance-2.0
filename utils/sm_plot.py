@@ -888,7 +888,7 @@ def plotxy(x,y,label=None, marker='.-', xlabel='x', ylabel='y', ylog=False, xlog
             ax.yaxis.set_major_locator(plt.MaxNLocator(nbins=max_ticks))
 
     # -------------------------------------------------
-    # Plot the data (use the possibly modified x_plot/y_plot)
+    # Plot the data
     # -------------------------------------------------
     line, = ax.plot(
         x_plot if xlog else x,
@@ -1150,7 +1150,7 @@ def darktheme(dark):
         plt.rcParams['savefig.dpi']=200
 
 
-def test_report_plots(valid_output : dict, z_key = "evm", max_time_in_maps=1e9, flagnan=True, logtraces=False,
+def test_report_plots(valid_output : dict, x_key="vmJ2", y_key="temperature", z_key = "evm", max_time_in_maps=1e9, flagnan=True, logtraces=False,
                        plot_surf=True, plot_runtime=False, path = None, name_addon = "", dark = True):
     """
     Report plots with multiple error metrics for analyzing surrogate models.
@@ -1169,23 +1169,16 @@ def test_report_plots(valid_output : dict, z_key = "evm", max_time_in_maps=1e9, 
 
   
     """
-
-    # Convert some dict keys to keys present in the data dict
-    if z_key == 'rhoc':
-        z_key_data = 'rhoc'
-    elif z_key == 'evm':
-        z_key_data = 'evm'
-    elif z_key == 'rhow':
-        z_key_data = 'rhow'
-
+    z_key_data = z_key
+    x_key_data = x_key
+    y_key_data = y_key
 
     ## Extract data maps at particular increments
-    end_evm_data = sma.datamap(valid_output['data'], x = 'vmJ2', y = 'temperature', z=z_key_data, inc=-1)
-    end_evm_valid = sma.datamap(valid_output['valid'], x = 'vmJ2', y = 'temperature', z=z_key, inc=-1)
-    simulation_time_valid = sma.datamap(valid_output['valid'], x = 'vmJ2', y = 'temperature', z='simulation_time', inc=-1)
-    errorinc= sma.errorinc(valid_output, x='vmJ2', y='temperature', z=z_key, min_relative_time=0.3, max_time=max_time_in_maps, eps=1e-20)
 
-    # raise IOError("debug")
+    end_evm_data = sma.datamap(valid_output['data'], x = x_key_data, y = y_key_data, z=z_key_data, inc=-1)
+    end_evm_valid = sma.datamap(valid_output['valid'], x = x_key_data, y = y_key_data, z=z_key, inc=-1)
+    simulation_time_valid = sma.datamap(valid_output['valid'], x = x_key_data, y = y_key_data, z='simulation_time', inc=-1)
+    errorinc= sma.errorinc(valid_output, x=x_key_data, y=y_key_data, z=z_key_data, min_relative_time=0.3, max_time=max_time_in_maps, eps=1e-20)
 
     # Plot data and surrogate (valid) response at particular increment
     if plot_runtime == True:
@@ -1198,14 +1191,12 @@ def test_report_plots(valid_output : dict, z_key = "evm", max_time_in_maps=1e9, 
                                     dark=dark)
     
     fig4, ax4 = scatterfield(errorinc['X'], errorinc['Y'], errorinc['REL_RMSE'], 
-                                xlabel="Von Mises Stress [MPa]",
-                                ylabel="Temperature [K]",
+                                xlabel=x_key_data,
+                                ylabel=y_key_data,
                                 zlabel=' Rel. RMSE', 
                                 vmin=1e-2, vmax=1e0, 
                                 cmap='RdBu_r', 
-                                # cmap='seismic',
                                 edgecolors='k',
-                                # vmin=1e-2, vmax=1e2, cmap='PiYG_r',                    
                                 logcolors=1, flagnan=flagnan,
                                 dark=dark)
     # Triangulation for surface plot
@@ -1259,13 +1250,14 @@ def test_report_plots(valid_output : dict, z_key = "evm", max_time_in_maps=1e9, 
         sim = numsims[sims[i]]
         simnumber.append(sim)
         plotxy(valid_output['data'][sim]['t'], valid_output['data'][sim][z_key_data], xlog=logtraces, ylog=logtraces, marker='.', color='green', ax=axs[row,col], dark=dark)
+        # plotxy(valid_output['valid'][sim]['t'], valid_output['valid'][sim][z_key], xlog=logtraces, ylog=logtraces, marker='.-', color='orange', ax=axs[row,col], dark=dark)
         plotxy(valid_output['valid'][sim]['t'], valid_output['valid'][sim][z_key], xlog=logtraces, ylog=logtraces, marker='.-', color='orange', ax=axs[row,col], dark=dark)
         # If the input is an array
-        if isinstance(valid_output['data'][sim]['vmJ2'], np.ndarray) and isinstance(valid_output['data'][sim]['temperature'], np.ndarray):
-            subtitle_text = "$\sigma$: {:4.0f} \n $T$: {:4.0f}".format(valid_output['data'][sim]['vmJ2'][-1], valid_output['data'][sim]['temperature'][-1])
+        if isinstance(valid_output['data'][sim][x_key_data], np.ndarray) and isinstance(valid_output['data'][sim][y_key_data], np.ndarray):
+            subtitle_text = "{:.4}: {:4.0f} \n {:.4}: {:4.0f}".format(x_key_data, valid_output['data'][sim][x_key_data][-1], y_key_data, valid_output['data'][sim][y_key_data][-1])
         # If the input is a single value
-        elif isinstance(valid_output['data'][sim]['vmJ2'], (float, int)) and isinstance(valid_output['data'][sim]['temperature'], (float, int)):
-            subtitle_text = "$\sigma$: {:4.0f} \n $T$: {:4.0f}".format(valid_output['data'][sim]['vmJ2'], valid_output['data'][sim]['temperature'])
+        elif isinstance(valid_output['data'][sim][x_key_data], (float, int)) and isinstance(valid_output['data'][sim][y_key_data], (float, int)):
+            subtitle_text = "{:.4}: {:4.0f} \n {:.4}: {:4.0f}".format(x_key_data, valid_output['data'][sim][x_key_data], y_key_data, valid_output['data'][sim][y_key_data])
         else:
             # Handle the case where the input is not an array or a single value
             subtitle_text = "Error: Invalid input format"        

@@ -33,12 +33,8 @@ Before running the data generator, you need to create a `samples.csv` file conta
 You can use the DoE script located at:
 
 ```bash
-python 1_Data_Generation/12_Design_of_Experiment/doe.py \
-  --n_samples 500 \
-  --variables T,P,phi \
-  --ranges "800,2200;1e5,4e6;0.4,2.2" \
-  --log "P" \
-  --output examples/Cantera_Kinetics/samples.csv
+cd 1_Data_Generation/12_Design_of_Experiment
+python doe.py TEMP 800 2200 PRESSURE 1e5 4e6 PHI 0.4 2.2 --number 10000 --log10 PRESSURE
 ```
 
 > **Tip**: Use logarithmic sampling for pressure (`P`) since it spans multiple orders of magnitude.
@@ -48,8 +44,8 @@ python 1_Data_Generation/12_Design_of_Experiment/doe.py \
 Once `samples.csv` exists, run the data generation script:
 
 ```bash
-cd examples/Cantera_Kinetics
-python generate_cantera_data.py --input samples.csv --output data.pickle
+cd 1_Data_Generation/13_Batch_Template_Setup
+python generate_cantera_data.py
 ```
 
 This will execute the simulations defined in `src/gri_autoignition.py` and save the results in a format compatible with LAROMance.

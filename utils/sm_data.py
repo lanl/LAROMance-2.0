@@ -341,7 +341,9 @@ def trim_creep_dataset(DATA, trim_variable=None, trim_max_threshold=np.inf):
     return DATA
 
 
-def curate_dataset(DATA, evm_max=None, U_evm_max=None, downsample_max_length=250,
+# def curate_dataset(DATA, evm_max=None, U_evm_max=None, downsample_max_length=250,
+#                    downsample_factor=None, downsample_key='evm'):
+def curate_dataset(DATA, max_input_for_trim_key = None, max_input_for_trim_value=None, max_output_for_sim_removal_key=None, max_output_for_sim_removal_value=None, downsample_max_length=250,
                    downsample_factor=None, downsample_key='evm'):
     """
     Curates the dataset in place, optionally trimming by max values for 'evm' and rejecting
@@ -399,9 +401,10 @@ def curate_dataset(DATA, evm_max=None, U_evm_max=None, downsample_max_length=250
         for k in keys_to_pop:
             sim_data.pop(k, None)
 
-        # --- Trim by evm ---
-        if evm_max is not None:
-            mask = np.asarray(sim_data['evm']) <= evm_max
+        # --- Trim by max input ---
+        if max_input_for_trim_key is not None:
+            print("\nTrimming arrays based on {}, up to {}...".format(sim, max_input_for_trim_key, max_input_for_trim_value))
+            mask = np.asarray(sim_data[max_input_for_trim_key]) <= max_input_for_trim_value
             for key, value in sim_data.items():
                 if isinstance(value, dict):
                     for subkey, subval in value.items():
@@ -409,14 +412,17 @@ def curate_dataset(DATA, evm_max=None, U_evm_max=None, downsample_max_length=250
                             sim_data[key][subkey] = np.asarray(subval)[mask]
                 elif isinstance(value, (list, np.ndarray)):
                     sim_data[key] = np.asarray(value)[mask]
+            print("\tDone.")
 
-        # --- Reject whole sim by U['evm'] ---
-        if U_evm_max is not None:
-            if np.any(np.asarray(sim_data['U']['evm']) > U_evm_max):
+        # --- Remove entire sim by max output ----
+        if max_output_for_sim_removal_key is not None:
+            if np.any(np.asarray(sim_data['U'][max_output_for_sim_removal_key]) > max_output_for_sim_removal_value):
+                print("Removing simulation {}, because {} exceeds {}".format(sim, max_output_for_sim_removal_key, max_output_for_sim_removal_value))
                 removed_large_strain_sims.append(sim)
                 meta_data.setdefault('large_strain_rate_sims', []).append(sim)
                 data.pop(sim)
                 continue
+            
 
         # Remove short simulations again (after trimming)
         if sim_data['t'].shape[0] < 5:
@@ -714,7 +720,6 @@ def fit_and_transform_input(data : dict, maps : dict):
                         # Speficy range
                         scalers[key] = MinMaxScaler(feature_range=maps[key]['minmax']['range'])
                     elif isinstance(maps[key]['minmax']['range'], list):
-                        print("Converting minmax scaler range 'list' to 'tuple'. ")
                         range_val = tuple(maps[key]['minmax'].get("range", (-1.0, 1.0)))
                         scalers[key] = MinMaxScaler(feature_range=range_val)
                     else:
@@ -800,8 +805,6 @@ def fit_and_transform_output(data : dict, maps : dict):
         if key in data['U']:
             data['unmapped']['U'][key] = copy.deepcopy(data['U'][key])
 
-    print("Transforming outputs for keys: {}".format(maps.keys()))
-
     # Define different data scalers and transform data, based "maps" dictionary.
     # Each if / elif is a different scalar call. Add more here if necessary.
     scalers = {}
@@ -828,7 +831,6 @@ def fit_and_transform_output(data : dict, maps : dict):
                         # Speficy range
                         scalers[key] = MinMaxScaler(feature_range=maps[key]['minmax']['range'])
                     elif isinstance(maps[key]['minmax']['range'], list):
-                        print("Converting minmax scaler range 'list' to 'tuple'. ")
                         range_val = tuple(maps[key]['minmax'].get("range", (-1.0, 1.0)))
                         scalers[key] = MinMaxScaler(feature_range=range_val)
                     else:
@@ -1506,7 +1508,6 @@ def check_data_consistency(data):
     """
     Check if all data entries have the same length.
     """
-    print("\nCheck data consistency...")
     sys.stdout.flush()
 
     # define array length check for nested dict 
@@ -1527,7 +1528,7 @@ def check_data_consistency(data):
         
     # raise error if inconsistent
     if int(check) == True:
-            print("\tOK: array lengths are consistent.")
+            print("\tDATA OK: arrays are consistent.")
             sys.stdout.flush()
     elif int(check) == False:
         raise IOError("\nData is inconsistent: not all data entries have the same length.")
@@ -1577,6 +1578,14 @@ def initialize_this_simulation(SM, data_i):
     output_keys = list(SM['output_maps'].keys())
     time_keys = ['t', 'dt']
 
+    # print("\n=======================================")
+    # print("Inputs in SM: {}".format(input_keys))
+    # print("Outputs in SM: {}".format(output_keys))
+    # print("Inputs in data: {}".format(data_i.keys()))
+    # print("Outputs in data: {}".format(data_i['U'].keys()))
+    # print("\n=======================================")
+    # raise IOError("debug")
+    
     # Initialize time stepping values
     for key in time_keys:
         try:

@@ -57,6 +57,18 @@ parser.add_argument(
     default=None,
     help="Comma‑separated list of pickle files."
 )
+parser.add_argument(
+    "--x_for_map",
+    type=str,
+    default=None,
+    help="Which x to use for error eval across a 2D input map."
+)
+parser.add_argument(
+    "--y_for_map",
+    type=str,
+    default=None,
+    help="Which y to use for error eval across a 2D input map."
+)
 args_cli = parser.parse_args()
 
 # ----------------------------------------------------------------------
@@ -170,20 +182,35 @@ def run_testing(forced_outputs):
 
     # Run testing
     test_results = smb.sm_test(SM, run_args, DATA=copy.deepcopy(DATA))
+    if args_cli.x_for_map is not None:
+        x_key = args_cli.x_for_map
+    else:
+        x_key = list(DATA['data'][list(DATA['data'].keys())[0]])[0]
+    if args_cli.y_for_map is not None:
+        y_key = args_cli.y_for_map
+    else:
+        y_key = list(DATA['data'][list(DATA['data'].keys())[0]])[1]
+
+    
+
 
     # Determine which outputs to plot
     if not forced_outputs:
         keys_to_plot = output_keys
-        print(f"Running coupled validation. Plotting all outputs: {keys_to_plot}")
     else:
         keys_to_plot = [k for k in output_keys if k not in forced_outputs]
+    print(f"\nCoupled validation completed. Plotting all outputs: {keys_to_plot}")
+    print("\nx in error map: {} with array length {}".format(x_key, len(DATA['data'][list(DATA['data'].keys())[0]][x_key])))
+    print("y in error map: {} with array length {}".format(y_key, len(DATA['data'][list(DATA['data'].keys())[0]][y_key])))
 
-    for key in keys_to_plot:
-        print(f"Generating plot for output '{key}' (forced set: {sorted(forced_outputs)})")
+    for z_key in keys_to_plot:
+        print(f"\nGenerating plot for output '{key}' (forced set: {sorted(forced_outputs)})")
         try:
             smp.test_report_plots(
                 test_results,
-                z_key=key,
+                x_key=x_key,
+                y_key=y_key,
+                z_key=z_key,
                 max_time_in_maps=1e9,
                 plot_surf=True,
                 path=run_args['output_directory'],
@@ -194,7 +221,9 @@ def run_testing(forced_outputs):
             print(f"Error with surface plots for '{key}': {e}. Retrying without surface plots.")
             smp.test_report_plots(
                 test_results,
-                z_key=key,
+                x_key=x_key,
+                y_key=y_key,
+                z_key=z_key,
                 max_time_in_maps=1e9,
                 plot_surf=False,
                 path=run_args['output_directory'],
