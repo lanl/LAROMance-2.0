@@ -42,7 +42,7 @@ parser = argparse.ArgumentParser(
     description="Surrogate model testing with optional truth‑injection (oracle) runs."
 )
 
-# --oracle-mode: no default – will be prompted if missing
+# --oracle-mode: no default – will be prompted if missing (unless --force is given)
 parser.add_argument(
     "--oracle-mode",
     choices=["coupled", "single", "pairwise", "all"],
@@ -58,7 +58,7 @@ parser.add_argument(
 # Other optional arguments retain defaults
 parser.add_argument(
     "--force",
-    nargs="*",
+    nargs="+",  # FIX: require at least one output name when the flag is used
     default=[],
     help="Explicitly force specific outputs (e.g., --force rhoc rhow). Overrides --oracle-mode.",
 )
@@ -132,21 +132,30 @@ with open(os.path.join('./references', data_filename), 'rb') as f:
 with open(os.path.join('./references', "SM.pickle"), 'rb') as f:
     SM = pickle.load(f)
 
-# Prompt for oracle-mode if not provided on the command line
-if args_cli.oracle_mode is None:
-    while True:
-        user_input = input(
-            "Select oracle mode (coupled/single/pairwise/all) [coupled]: "
-        ).strip()
-        if not user_input:
-            user_input = "coupled"
-        if user_input in ("coupled", "single", "pairwise", "all"):
-            args_cli.oracle_mode = user_input
-            break
-        else:
-            print(
-                "Invalid choice. Please enter 'coupled', 'single', 'pairwise', or 'all'."
-            )
+# FIX: --force overrides --oracle-mode, so tell the user if both were supplied
+if args_cli.force and args_cli.oracle_mode:
+    print(f"Note: --force specified; ignoring --oracle-mode '{args_cli.oracle_mode}'.")
+
+# FIX: Only prompt for oracle-mode if neither --force nor --oracle-mode was provided
+if args_cli.oracle_mode is None and not args_cli.force:
+    if sys.stdin.isatty():
+        while True:
+            user_input = input(
+                "Select oracle mode (coupled/single/pairwise/all) [coupled]: "
+            ).strip()
+            if not user_input:
+                user_input = "coupled"
+            if user_input in ("coupled", "single", "pairwise", "all"):
+                args_cli.oracle_mode = user_input
+                break
+            else:
+                print(
+                    "Invalid choice. Please enter 'coupled', 'single', 'pairwise', or 'all'."
+                )
+    else:
+        # FIX: Non-interactive session (batch job, CI, piped stdin) – don't hang on input()
+        print("No --oracle-mode given and stdin is not interactive; defaulting to 'coupled'.")
+        args_cli.oracle_mode = "coupled"
 
 # ----------------------------------------------------------------------
 # Base argument dictionary used for each validation run
@@ -167,6 +176,14 @@ base_args['sim_range'] = np.array(list(DATA['data'].keys()))[0:]
 output_keys = list(SM.get('nodal_values', {}).keys())
 if not output_keys:
     raise RuntimeError("No outputs found in SM['nodal_values'].")
+
+# FIX: Validate names passed to --force against the outputs the surrogate provides
+invalid_forced = set(args_cli.force) - set(output_keys)
+if invalid_forced:
+    raise ValueError(
+        f"Unknown output(s) in --force: {sorted(invalid_forced)}. "
+        f"Available: {output_keys}"
+    )
 
 def run_testing(forced_outputs):
     """
