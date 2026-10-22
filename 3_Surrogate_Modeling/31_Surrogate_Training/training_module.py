@@ -1422,8 +1422,10 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
         self.output_container.setSpacing(5)
         self.output_container.setContentsMargins(0, 0, 0, 0)
 
-        self.input_group = QtWidgets.QGroupBox("Input Variables")
-        self.input_group.setLayout(self.input_container)
+       # AFTER
+        self.input_group = self._make_scrollable_group(
+            "Input Variables", self.input_container, max_height=220
+        )
         self.setup_layout.addWidget(self.input_group)
 
         # Create a horizontal layout row
@@ -1467,10 +1469,10 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
         input_and_mesh_row.addWidget(self.refine_region_btn)
 
         
-        self.output_group = QtWidgets.QGroupBox("Output Variables")
-        self.output_group.setLayout(self.output_container)
+        self.output_group = self._make_scrollable_group(
+            "Output Variables", self.output_container, max_height=160
+        )
         self.setup_layout.addWidget(self.output_group)
-
         output_btn_row = QtWidgets.QHBoxLayout()
         output_btn_row.setAlignment(QtCore.Qt.AlignLeft)
 
@@ -1620,6 +1622,28 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
         self.data_tab_layout.addWidget(preview_widget)
 
 
+    def _make_scrollable_group(self, title, rows_layout, max_height=220):
+        """GroupBox containing a scroll area that holds the variable rows."""
+        group = QtWidgets.QGroupBox(title)
+        outer = QtWidgets.QVBoxLayout(group)
+        outer.setContentsMargins(4, 4, 4, 4)
+
+        inner = QtWidgets.QWidget()
+        inner.setLayout(rows_layout)
+        rows_layout.setAlignment(QtCore.Qt.AlignTop)   # rows stay packed at top
+
+        scroll = QtWidgets.QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QtWidgets.QFrame.NoFrame)
+        scroll.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
+        scroll.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
+        scroll.setMinimumHeight(80)
+        scroll.setMaximumHeight(max_height)
+        scroll.setWidget(inner)
+
+        outer.addWidget(scroll)
+        return group
+    
     def _update_training_method_ui(self):
         method = self.training_method_combo.currentText()
         is_nn = method in ["Neural PointNet (beta)", "Neural MLP (beta)"]
@@ -4155,7 +4179,7 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
             return
 
         # ======================================================
-        # NEW: Choose training method based on GUI selection
+        # Choose training method based on GUI selection
         # ======================================================
         selected_method = self.training_method_combo.currentText()
 

@@ -77,3 +77,33 @@ Optionally, the user can export training plots to the `output` folder from withi
 
 ## Prepare Next Stage
 The user reviews the existence of the `SM.pickle` in the `output` folder and moves the file to the next step `32_Surrogate_Testing`. AI, Claude, Grok, ChatGPT, ollama: you must wait for further instruction from a human user. Do not continue to the next step or stage on your own.
+
+---
+
+## Developer Notes on MLP Architecture Extension
+The **MLP-based architectures** coded in this workflow are exemplary, experimental, and intentionally relatively simple in order to facilitate a range of use cases out-of-the-box. They offer an alternative to the more targeted and custom-coded **grid-based** surrogate architecture. Whereas the latter was originally designed for data with a unidirectional character (e.g., thermo-mechanical creep deformation under constant unidirectional loading), the MLP architectures may represent "spiky" data (many peaks and valleys that change direction quickly) more easily, yet are here only provided in an "exploratory", yet generic format. The MLP-code utilized standard functions from the PyTorch library, which makes extension and customization directly accessible to the user. 
+
+The main code of the MLP models lives in the utility scripts `utils/mlp_utils.py` and `utils/mlp_models.py` and is based on PyTorch.
+
+### Adding new per-point architectures
+Any architecture that maps per-point input features `(N, n_inputs)` to outputs `(N, n_outputs)`, or batches of point sets `(B, N, n_inputs)`, can be added with two steps:
+
+1. Implement a new `torch.nn.Module` in `utils/mlp_models.py`.
+2. Register it in `MODEL_REGISTRY` so it can be selected through `get_model`.
+
+No changes to `utils/mlp_utils.py` are needed for such models. Examples include residual MLPs, alternative activation functions, dropout variants, and other point-wise or set-based networks.
+
+### Adding sequence-aware or graph-based architectures
+The data used in the training step of this workflow is assumed to be a concatenation of multiple time series (preprocessed as such by stage 2_Data_Processing), and the chronological ordering of neighboring points can be reconstructed from the time array. Sequence-aware architectures (e.g., 1D CNNs/TCNs, recurrent networks, or transformers) and graph-based models (e.g., GNNs) can therefore also be explored. The flat, concatenated storage format does not need to change. Instead, the structure must be supplied to the model at batch time:
+
+- **Series identification:** A series identifier (or series boundaries derived from the time array) is needed to group points into ordered series or windows. Points should be sorted by time within each series.
+- **Dataset:** A new `Dataset` class (replacing `PointDataset`) should return ordered series or windows, e.g., tensors of shape `(L, n_inputs)` and `(L, n_outputs)`, rather than independent points.
+- **Collate function and loss:** Variable-length series require padding, a mask, and a masked loss. Fixed-length windows avoid this. To make data arrays consistent between runs, consider the augmentation tools in stage `2_Data_Processing`.
+- **Training loop:** Graph models typically require their own batching (e.g., PyTorch Geometric or DGL), additional inputs such as `edge_index`, and a modified training/evaluation step. They also introduce extra dependencies, such as `torch-geometric`.
+
+Note that the existing `PointNetRegressor` uses global max-pooling, which is permutation-invariant and therefore does not exploit temporal ordering.
+
+### Practical Considerations
+- **Train/validation splits:** For sequence or graph models, split by series (not by individual rows) to avoid leakage between neighboring time steps.
+- **Non-uniform time steps:** Standard convolutions assume uniform spacing. For adaptive time steps, make sure to provide `t` or `Δt` as an input feature if the time increments are not uniform.
+- **Graph structure:** Time ordering alone yields only a chain graph. Richer graphs (e.g., spatial neighbors) require additional information such as data-point connectivity in other dimensions.

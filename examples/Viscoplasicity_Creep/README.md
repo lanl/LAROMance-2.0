@@ -57,6 +57,11 @@ After this stage the curated data can be fed straight into the **03_Surrogate_Mo
 pipeline to train a surrogate model for the creep strain‑rate and dislocation‑
 density‑rate as functions of `vmJ2` and `temperature`, `evm` (strain), and `rhoc` (dislocation density).
 
+## Notes
+- The Viscoplasticity_Creep example data-set is completely fictional, i.e., it does not reflect any real material.
+- Despite the data being fictional, in a relative sense, the dataset represents typical creep-deformation relations and dependencies.
+- The grid-based surrogate model architecture, available in this workflow, was originally developed for this type of data in DOE-funded research at Los Alamos National Laboratory.
+  
 *The example run commands in the stages' CONTEXT.md files throughout the pipeline (starting from step 2) are chosen to work exactly with this dataset*
 
 ---

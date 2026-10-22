@@ -211,6 +211,8 @@ def generate(samples_csv, out_path, *, limit=None, nproc=1, n_steps=200,
 
     # --- Report -----------------------------------------------------------
     print("\nDone in {:.1f} s.".format(elapsed))
+    print("  avg time per simulation : {:.4f} s ({} runs, nproc={})"
+          .format(elapsed / len(tasks), len(tasks), nproc))
     print("  successful trajectories : {}".format(len(data)))
     print("  failed trajectories     : {}".format(len(failed)))
     if data:
@@ -236,8 +238,8 @@ def main():
                    help="Process only the first N samples.")
     p.add_argument("--smoke", action="store_true",
                    help="Quick wiring test: equivalent to --limit 20.")
-    p.add_argument("--nproc", type=int, default=1,
-                   help="Number of worker processes (default: 1 = serial).")
+    p.add_argument("--nproc", type=int, default=4,
+                   help="Number of worker processes (default: 4 parallel).")
     p.add_argument("--n_steps", type=int, default=200,
                    help="Output time points per trajectory (array length).")
     p.add_argument("--t_end", type=float, default=1.0,

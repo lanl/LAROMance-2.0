@@ -92,9 +92,9 @@ python load_and_plot_data.py --pickle_files Creep_runs_with_dislocation_density_
 - `--pickle_files f1,f2,…`: Pickle files to include (comma-separated, relative to the `references` folder). If omitted, the single hard-coded `filename` is loaded.
 - `--split_data P`: Percentage (0-100) of curated simulations used for training. The rest are used for testing.
 - `--anchor_points a,b,c,…`: Interpolate all fields at these anchor values for optional data augmentation (e.g., `0.0,1e-12,1e-10`).
-- `--rename U[dT_dt]:T`: Rename input/output dictionary labels. Tip: outputs are stored in the nested dictionary `U` within the data dict. When output and input names are equal, the testing procedure will treat them as a coupled input/ouptut: the update in input comes from the output rate form multiplied by the time step. Example:
+- `--rename U[dT_dt]:T`: Rename input/output dictionary labels. Tip: outputs are stored in the nested dictionary `U` within the data dict. When output and input names are equal, the testing procedure will treat them as a coupled input/ouptut: the update in input comes from the output rate form multiplied by the time step. Example relevant for "cantera" data:
    ```bash 
-   U[dT_dt]:T,U[dCH4_dt]:CH4,U[dO2_dt]:O2,U[dCO2_dt]:CO2
+   U[dT_dt]:T,U[dCH4_dt]:CH4,U[dO2_dt]:O2,U[dCO2_dt]:CO2,U[dH2O_dt]:H2O,U[dCO_dt]:CO,U[dOH_dt]:OH,U[dH_dt]:H,U[dO_dt]:O 
    ```
 
 ### Down-sampling
