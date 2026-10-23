@@ -4091,7 +4091,8 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
             "output_maps": map_output or self.args.get("fitted_map_output", {}),
             "mlp_model_type": model_type or self.args.get("mlp_model", "pointnet"),
             "mlp_hidden": self.args.get("mlp_hidden", 128),
-            "training_method": "mlp"
+            "training_method": "mlp",
+            "roi": copy.deepcopy(self.roi)
         }
 
         with open("./output/SM.pickle", "wb") as f:
