@@ -24,7 +24,7 @@ Finite element surrogate model build methods.
 
 sm_train:      calibration of finite element nodal values
 sm_test:   testing of calibrated model
-run_creep: subprocess for creep simulation
+rate_stepper: subprocess for creep simulation
 
 @author: Andre Ruybalid
 """
@@ -56,7 +56,7 @@ from utils import sm_plot as smp
 def prepare_mlp_args(SM, args=None):
     """
     Automatically populates the args dictionary with MLP-related keys
-    needed for run_creep() when using an MLP model.
+    needed for rate_stepper() when using an MLP model.
 
     Parameters
     ----------
@@ -820,9 +820,9 @@ def sm_test(SM: dict, args : dict, DATA : dict = None, data_files_common_name : 
 
     # set sim_range=range(len(data)) or custom for debugging, e.g., sim_range=range(151,171)
     if 'all' in args['sim_range']:
-        valid = run_creep(data, SM, sim_range=list(data.keys()), args=args)
+        valid = rate_stepper(data, SM, sim_range=list(data.keys()), args=args)
     elif isinstance(args['sim_range'], np.ndarray):
-        valid = run_creep(data, SM, sim_range=args['sim_range'], args=args)
+        valid = rate_stepper(data, SM, sim_range=args['sim_range'], args=args)
     else:
         raise IOError("I do not know which validation runs to execute in smb.sm_test")
 
@@ -862,7 +862,7 @@ def sm_test(SM: dict, args : dict, DATA : dict = None, data_files_common_name : 
 
     return valid_output
 
-def run_creep(data: dict, SM: dict, sim_range: range, args: dict | None = None):
+def rate_stepper(data: dict, SM: dict, sim_range: range, args: dict | None = None):
     """
     Runner for a thermo-mechanical/irradiation creep simulation.
     The initial conditions are provided to compute strain rate and
@@ -885,7 +885,7 @@ def run_creep(data: dict, SM: dict, sim_range: range, args: dict | None = None):
     # 1. Prepare rate provider (MLP vs Grid)
     # ============================================================
     if use_mlp:
-        print("[run_creep] Using MLP inference path")
+        print("[rate_stepper] Using MLP inference path")
         import torch
         from utils.mlp_models import get_model
 
@@ -914,7 +914,7 @@ def run_creep(data: dict, SM: dict, sim_range: range, args: dict | None = None):
 
         rate_provider = "mlp"
     else:
-        print("[run_creep] Using grid-based inference path")
+        print("[rate_stepper] Using grid-based inference path")
         nodes        = copy.deepcopy(SM['mesh']['nodes'])
         conn         = copy.deepcopy(SM['mesh']['conn'])
         mesh_specs   = copy.deepcopy(SM['mesh_specs'])

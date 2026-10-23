@@ -198,7 +198,7 @@ def generate_verification_5d_table(SM, roi, num_inputs = 1000, output_directory 
             }
 
     # run a creep simulation
-    creep_output = smb.run_creep(input, SM, sim_range=range(len(input)), args = args)
+    creep_output = smb.rate_stepper(input, SM, sim_range=range(len(input)), args = args)
 
     ## ============================
     ## STORE RESULT IN .CSV FILE
@@ -299,7 +299,7 @@ def generate_verification_table(
         rand_vals[key] = [random.uniform(low, high) for _ in range(num_inputs)]
 
     # --------------------------------------------------------------------- #
-    # 2️⃣  Build the “input deck’’ expected by ``smb.run_creep``.
+    # 2️⃣  Build the “input deck’’ expected by ``smb.rate_stepper``.
     # --------------------------------------------------------------------- #
     input_deck: dict[int, dict] = {}
     for i in range(num_inputs):
@@ -329,7 +329,7 @@ def generate_verification_table(
     # --------------------------------------------------------------------- #
     # 4️⃣  Run the creep simulation for all generated inputs
     # --------------------------------------------------------------------- #
-    creep_output = smb.run_creep(input_deck, SM, sim_range=range(len(input_deck)), args=args)
+    creep_output = smb.rate_stepper(input_deck, SM, sim_range=range(len(input_deck)), args=args)
 
     # --------------------------------------------------------------------- #
     # 5️⃣  Assemble CSV headers – time, all inputs, dt, then all outputs
@@ -484,7 +484,7 @@ def generate_verification_6d_table(SM, roi, num_inputs = 1000, output_directory 
             }
 
     # run a creep simulation
-    creep_output = smb.run_creep(input, SM, sim_range=range(len(input)), args = args)
+    creep_output = smb.rate_stepper(input, SM, sim_range=range(len(input)), args = args)
 
     ## ============================
     ## STORE RESULT IN .CSV FILE
@@ -592,7 +592,7 @@ def generate_verification_4d_table(SM, roi, num_inputs = 1000, output_directory 
             }
 
     # run a creep simulation
-    creep_output = smb.run_creep(input, SM, sim_range=range(len(input)), args=args)
+    creep_output = smb.rate_stepper(input, SM, sim_range=range(len(input)), args=args)
 
     ## ============================
     ## STORE RESULT IN .CSV FILE
