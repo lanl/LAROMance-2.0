@@ -1422,8 +1422,10 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
         self.output_container.setSpacing(5)
         self.output_container.setContentsMargins(0, 0, 0, 0)
 
-        self.input_group = QtWidgets.QGroupBox("Input Variables")
-        self.input_group.setLayout(self.input_container)
+       # AFTER
+        self.input_group = self._make_scrollable_group(
+            "Input Variables", self.input_container, max_height=220
+        )
         self.setup_layout.addWidget(self.input_group)
 
         # Create a horizontal layout row
@@ -1467,10 +1469,10 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
         input_and_mesh_row.addWidget(self.refine_region_btn)
 
         
-        self.output_group = QtWidgets.QGroupBox("Output Variables")
-        self.output_group.setLayout(self.output_container)
+        self.output_group = self._make_scrollable_group(
+            "Output Variables", self.output_container, max_height=160
+        )
         self.setup_layout.addWidget(self.output_group)
-
         output_btn_row = QtWidgets.QHBoxLayout()
         output_btn_row.setAlignment(QtCore.Qt.AlignLeft)
 
@@ -1533,6 +1535,52 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
         plot_button.clicked.connect(self.plot_data)
         self.setup_layout.addWidget(plot_button)
 
+        # run_button = QtWidgets.QPushButton("Run Training")
+        # run_button.clicked.connect(self.run_training)
+        # self.setup_layout.addWidget(run_button)
+
+        # === Training Method Selector (placed high in the GUI) ===
+        self.training_method_combo = QtWidgets.QComboBox()
+        self.training_method_combo.addItems([
+            "Grid-based",
+            "Neural PointNet (beta)",
+            "Neural MLP (beta)"
+        ])
+        self.training_method_combo.setToolTip("Choose the surrogate training method")
+        self.setup_layout.addWidget(self.training_method_combo)
+
+        # Neural Net settings group (shown only for PointNet / MLP)
+        self.nn_group = QtWidgets.QGroupBox("Neural Network Settings")
+        nn_layout = QtWidgets.QFormLayout()
+
+        self.nn_epochs = QtWidgets.QSpinBox()
+        self.nn_epochs.setRange(1, 10000)
+        self.nn_epochs.setValue(50)
+
+        self.nn_hidden = QtWidgets.QSpinBox()
+        self.nn_hidden.setRange(16, 2048)
+        self.nn_hidden.setValue(128)
+
+        self.nn_batch = QtWidgets.QSpinBox()
+        self.nn_batch.setRange(32, 8192)
+        self.nn_batch.setValue(1024)
+
+        self.nn_lr = QtWidgets.QDoubleSpinBox()
+        self.nn_lr.setDecimals(5)
+        self.nn_lr.setValue(0.001)
+
+        nn_layout.addRow("Epochs:", self.nn_epochs)
+        nn_layout.addRow("Hidden Size:", self.nn_hidden)
+        nn_layout.addRow("Batch Size:", self.nn_batch)
+        nn_layout.addRow("Learning Rate:", self.nn_lr)
+
+        self.nn_group.setLayout(nn_layout)
+        self.nn_group.setVisible(False)
+        self.setup_layout.addWidget(self.nn_group)
+
+        # Show/hide NN settings when method changes
+        self.training_method_combo.currentTextChanged.connect(self._update_training_method_ui)
+
         run_button = QtWidgets.QPushButton("Run Training")
         run_button.clicked.connect(self.run_training)
         self.setup_layout.addWidget(run_button)
@@ -1573,6 +1621,33 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
         preview_widget.setLayout(preview_row)
         self.data_tab_layout.addWidget(preview_widget)
 
+
+    def _make_scrollable_group(self, title, rows_layout, max_height=220):
+        """GroupBox containing a scroll area that holds the variable rows."""
+        group = QtWidgets.QGroupBox(title)
+        outer = QtWidgets.QVBoxLayout(group)
+        outer.setContentsMargins(4, 4, 4, 4)
+
+        inner = QtWidgets.QWidget()
+        inner.setLayout(rows_layout)
+        rows_layout.setAlignment(QtCore.Qt.AlignTop)   # rows stay packed at top
+
+        scroll = QtWidgets.QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QtWidgets.QFrame.NoFrame)
+        scroll.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
+        scroll.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
+        scroll.setMinimumHeight(80)
+        scroll.setMaximumHeight(max_height)
+        scroll.setWidget(inner)
+
+        outer.addWidget(scroll)
+        return group
+    
+    def _update_training_method_ui(self):
+        method = self.training_method_combo.currentText()
+        is_nn = method in ["Neural PointNet (beta)", "Neural MLP (beta)"]
+        self.nn_group.setVisible(is_nn)
 
     def trigger_lasso_selector(self):
         self.enable_lasso_selector = True
@@ -2863,12 +2938,12 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
             sim_lengths = np.asarray(meta['sim_lengths'], dtype=int)
             cumsum = np.concatenate(([0], np.cumsum(sim_lengths))).astype(int)
             segments = [np.arange(cumsum[i], cumsum[i+1]) for i in range(len(sim_lengths))]
-            print(f"[plotter] Using meta_data segmentation with {len(segments)} segments.")
+            print(f"[plot_time_series] Using meta_data segmentation with {len(segments)} segments.")
         else:
             diffs = np.diff(x)
             reset_indices = np.where(diffs < -abs_tol)[0] + 1
             segments = np.split(np.arange(len(x)), reset_indices) if len(reset_indices) > 0 else [np.arange(len(x))]
-            print(f"[plotter] Heuristic segmentation found {len(segments)} segments (reset indices: {reset_indices}).")
+            print(f"[plot_time_series] Heuristic segmentation for plotting time-series found.")
 
         # validation & refinement: ensure each segment has monotonically non-decreasing x.
         def refine_segments(segs):
@@ -3531,11 +3606,48 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
         canvas.draw()
 
 
-    # TO FIX: mixed up data and results canvases
+    def _update_result_plot_neural(self, SM, DATA2, u_physical, u_mapped,
+                               uh_physical, uh_mapped, outvar, input_vars):
+        """Plot training results for neural (MLP/PointNet) models."""
+        print("[update_result_plot] Neural model detected — using simplified plotting path.")
+
+        # Remove old canvases
+        for attr in ("data_canvas_2d", "data_canvas_3d"):
+            canvas = getattr(self, attr, None)
+            if canvas:
+                idx = self.result_plot_stack.indexOf(canvas)
+                if idx != -1:
+                    self.result_plot_stack.removeWidget(canvas)
+                canvas.setParent(None)
+                canvas.deleteLater()
+                setattr(self, attr, None)
+
+        # Simple 2D scatter: reference vs prediction
+        fig = Figure(figsize=(6, 5))
+        ax = fig.add_subplot(111)
+
+        ax.scatter(u_physical, uh_physical, s=8, alpha=0.6, edgecolors='k', linewidths=0.3)
+        ax.plot([u_physical.min(), u_physical.max()],
+                [u_physical.min(), u_physical.max()], 'r--', lw=1, label='Ideal')
+
+        ax.set_xlabel(f"{outvar} (reference)")
+        ax.set_ylabel(f"{outvar} (prediction)")
+        ax.set_title(f"Neural Model Fit: {outvar}")
+        ax.legend()
+        ax.grid(True, alpha=0.3)
+
+        self.data_canvas_2d = FigureCanvas(fig)
+        self.result_plot_stack.addWidget(self.data_canvas_2d)
+        self.result_plot_stack.setCurrentIndex(0)
+        self.data_canvas_2d.draw()
+
     def update_result_plot(self, SM=None, DATA2=None, u_physical=None, u_mapped=None,
                        uh_physical=None, uh_mapped=None, outvar=None,
                        input_vars=None, rel_err=None):
+
+
         print("Update result plot.")
+
         # Defensive: avoid incorrect call (e.g., from toggle button passing bool)
         if not isinstance(SM, dict):
             print("Recovered from bad toggle-triggered call.")
@@ -3557,6 +3669,16 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
             self._cached_uhphysical = uh_physical
             self._cached_outvar = outvar
             self._cached_input_vars = input_vars
+
+
+        # ============================================================
+        # NEW: Detect neural model (MLP / PointNet)
+        # ============================================================
+        is_neural = (
+            "mlp_model" in SM
+            or "mlp_model_path" in SM
+            or SM.get("training_method") == "mlp"
+        )
 
         # Remember which page user was on (only matters for multi-var)
         current_index = self.result_plot_stack.currentIndex() if len(input_vars) > 1 else 0
@@ -3581,13 +3703,13 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
             fig = Figure(figsize=(6, 5))
             ax = fig.add_subplot(111)
             x = DATA2['data'][input_vars[0]]
-            nodes = smd.backtransform_nodes(copy.deepcopy(SM['mesh']['nodes']), SM['input_maps']).flatten()
-
-            # FIX: use the correct outvar map (was 'u' before)
-            nodal_values = smd.backtransform_output(
-                copy.deepcopy(SM['nodal_values'][outvar]),
-                SM['output_maps'][outvar]
-            ).flatten()
+            if not is_neural:
+                nodes = smd.backtransform_nodes(copy.deepcopy(SM['mesh']['nodes']), SM['input_maps']).flatten()
+                # FIX: use the correct outvar map (was 'u' before)
+                nodal_values = smd.backtransform_output(
+                    copy.deepcopy(SM['nodal_values'][outvar]),
+                    SM['output_maps'][outvar]
+                ).flatten()
 
             smp.plotxy(x, u_physical, color='g', ax=ax)
             smp.plotxy(x, uh_physical, color='r', marker='-', ax=ax)
@@ -3673,11 +3795,12 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
         ax1.set_aspect('auto')
         ax1.autoscale(enable=True, axis='both', tight=True)
 
-        smp.visualize_mesh(
-            smd.backtransform_nodes(copy.deepcopy(SM['mesh']['nodes']), SM['input_maps']),
-            SM['mesh']['conn'], dim=2, ax=ax1,
-            show_node_numbers=False, show_elem_numbers=False
-        )
+        if not is_neural:
+            smp.visualize_mesh(
+                smd.backtransform_nodes(copy.deepcopy(SM['mesh']['nodes']), SM['input_maps']),
+                SM['mesh']['conn'], dim=2, ax=ax1,
+                show_node_numbers=False, show_elem_numbers=False
+            )
 
         self.data_canvas_2d = FigureCanvas(fig1)
         self.setup_interactive_labels(fig1)
@@ -3710,33 +3833,33 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
             ax2.plot_trisurf(x1_ds, x2_ds, uh_ds, cmap='viridis', alpha=0.4, edgecolors='k')
 
         if self.toggle_nodes.isChecked():
-            
-            # Backtransform nodal coordinates to physical space
-            nodes_xy = smd.backtransform_nodes(
-                copy.deepcopy(SM['mesh']['nodes']),
-                SM['input_maps']
-            )
+            if not is_neural:
+                # Backtransform nodal coordinates to physical space
+                nodes_xy = smd.backtransform_nodes(
+                    copy.deepcopy(SM['mesh']['nodes']),
+                    SM['input_maps']
+                )
 
-            # Backtransform nodal values to physical space (or not)
-            if self.toggle_mapped_output_in_plots.isChecked() == False:
-                nodal_values = smd.backtransform_output(
-                    copy.deepcopy(SM['nodal_values'][outvar]),
-                    SM['output_maps'][outvar]
-                ).flatten()
-            elif self.toggle_mapped_output_in_plots.isChecked():
-                nodal_values = copy.deepcopy(SM['nodal_values'][outvar])
+                # Backtransform nodal values to physical space (or not)
+                if self.toggle_mapped_output_in_plots.isChecked() == False:
+                    nodal_values = smd.backtransform_output(
+                        copy.deepcopy(SM['nodal_values'][outvar]),
+                        SM['output_maps'][outvar]
+                    ).flatten()
+                elif self.toggle_mapped_output_in_plots.isChecked():
+                    nodal_values = copy.deepcopy(SM['nodal_values'][outvar])
 
-            # Assume 2 input dims, so take first 2 cols as x,y
-            x_nodes = nodes_xy[:, 0]
-            y_nodes = nodes_xy[:, 1]
-            z_nodes = nodal_values
+                # Assume 2 input dims, so take first 2 cols as x,y
+                x_nodes = nodes_xy[:, 0]
+                y_nodes = nodes_xy[:, 1]
+                z_nodes = nodal_values
 
-            # Scatter plot of nodes
-            ax2.scatter(
-                x_nodes, y_nodes, z_nodes,
-                marker='^', color='yellow', s=50,
-                edgecolors='green', alpha=0.8, label='Nodal values'
-            )
+                # Scatter plot of nodes
+                ax2.scatter(
+                    x_nodes, y_nodes, z_nodes,
+                    marker='^', color='yellow', s=50,
+                    edgecolors='green', alpha=0.8, label='Nodal values'
+                )
 
 
         ax2.legend(loc="best")
@@ -3761,36 +3884,41 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
         self.data_canvas_3d.draw()
 
     def _wire_output_selectors(self):
-        # Create/clear an exclusive group for the plot checkboxes
         if not hasattr(self, "_plot_group"):
             self._plot_group = QtWidgets.QButtonGroup(self)
             self._plot_group.setExclusive(True)
 
-        # Remove previously added buttons to avoid duplicates across retrains
         for b in list(self._plot_group.buttons()):
             self._plot_group.removeButton(b)
 
         for cb, plot_cb, _, _ in self.output_var_cbs:
             self._plot_group.addButton(plot_cb)
 
-            # Disconnect old connections to avoid multiple triggers
-            try: cb.currentIndexChanged.disconnect()
-            except TypeError: pass
-            try: plot_cb.toggled.disconnect()
-            except TypeError: pass
+            # Block signals while rewiring to avoid duplicate connections
+            cb.blockSignals(True)
+            plot_cb.blockSignals(True)
 
-            # If this checkbox gets turned ON, replot with its combo's current text
+            # Disconnect any previous connections safely
+            try:
+                cb.currentIndexChanged.disconnect()
+            except Exception:
+                pass
+            try:
+                plot_cb.toggled.disconnect()
+            except Exception:
+                pass
+
+            cb.blockSignals(False)
+            plot_cb.blockSignals(False)
+
             plot_cb.toggled.connect(lambda checked, combo=cb: checked and self.plot_output(combo.currentText()))
-
-            # If the combo changes, replot only if THIS checkbox is the active one
             cb.currentIndexChanged.connect(lambda _, combo=cb, chk=plot_cb: chk.isChecked() and self.plot_output(combo.currentText()))
 
-        # Enforce exactly one checked (if none, check the first; if many, leave only the first)
+        # Ensure exactly one checkbox is checked
         checked = [b for b in self._plot_group.buttons() if b.isChecked()]
         if len(checked) == 0 and self._plot_group.buttons():
             self._plot_group.buttons()[0].setChecked(True)
         elif len(checked) > 1:
-            # keep only the first checked
             for b in checked[1:]:
                 b.setChecked(False)
 
@@ -3821,6 +3949,196 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
                 # TOFIX: add a little margin to make sure all data is inside the ROI
                 roi[k] = [min(data['data'][k]), max(data['data'][k])]
         return roi
+
+
+    # =============
+    # Helpers for training with MLP
+    # =================
+    def _prepare_grid_training_data(self, input_vars, output_vars):
+        """Prepare the concatenated data in the format expected by both training paths."""
+        new_data = {
+            "data": {
+                "x": np.vstack([self.data["data"][k] for k in input_vars]).T,
+                "U": {k: self.data["data"]["U"][k] for k in output_vars},
+            }
+        }
+        for k in input_vars:
+            new_data["data"][k] = self.data["data"][k]
+        return new_data
+
+    def _run_mlp_inference_on_training_data(self, trained_model, new_data, input_vars, output_vars,
+                                        fitted_map_input, fitted_map_output):
+        """Run the trained neural net on the training points and return the same
+        structure that the grid-based path puts into self.outputs."""
+        import torch
+        from sklearn.preprocessing import StandardScaler, MinMaxScaler
+
+        X_list = [np.asarray(new_data["data"][var], dtype=np.float32) for var in input_vars]
+        X = np.column_stack(X_list)
+
+        # Apply input scalers
+        X_scaled = X.copy()
+        for i, var in enumerate(input_vars):
+            if var in fitted_map_input:
+                scaler = fitted_map_input[var]
+                X_scaled[:, i] = scaler.transform(X[:, i].reshape(-1, 1)).ravel()
+
+        # Forward pass
+        with torch.no_grad():
+            X_tensor = torch.tensor(X_scaled, dtype=torch.float32)
+            y_pred = trained_model(X_tensor).cpu().numpy()
+
+        outputs = {}
+        for j, var in enumerate(output_vars):
+            uh_mapped = y_pred[:, j]
+            u_physical  = np.asarray(new_data["data"]["U"][var], dtype=np.float32)
+
+            scaler = fitted_map_output[var]
+
+            if isinstance(scaler, (StandardScaler, MinMaxScaler)):
+                uh_physical = scaler.inverse_transform(uh_mapped.reshape(-1, 1)).ravel()
+                u_mapped   = scaler.transform(u_physical.reshape(-1, 1)).ravel()
+            else:
+                uh_physical = scaler.inverse_transform(uh_mapped)
+                u_mapped   = scaler.transform(u_physical)
+
+            outputs[var] = {
+                "u_physical": u_physical,
+                "u_mapped": u_mapped,
+                "uh_mapped": uh_mapped,
+                "uh_physical": uh_physical,
+            }
+
+        # === NEW: Create minimal dummy mesh so update_result_plot doesn't crash ===
+        # We create a tiny dummy mesh so the plotting code can at least run.
+        # The actual neural results are plotted via the data points, not the mesh.
+        n_points = len(X)
+        dummy_nodes = np.zeros((n_points, len(input_vars)))
+        dummy_conn = np.array([[0, 1, 2]]) if n_points >= 3 else np.array([[0]])
+
+        self.SM["mesh"] = {
+            "nodes": dummy_nodes,
+            "conn": dummy_conn,
+        }
+        self.SM["nodal_values"] = {var: np.zeros(n_points) for var in output_vars}
+
+        return outputs
+
+    def _handle_grid_training_results(self, train_output, SM, new_data, input_vars, output_vars):
+        """Store results and update GUI for grid-based training."""
+        self.outputs = {}
+        self.DATA2 = new_data
+        self.SM = SM
+        self.input_vars = input_vars
+
+        # Rebuild self.outputs exactly like the original run_training did
+        for outvar in output_vars:
+            u_mapped = train_output["U"][outvar]
+            uh_mapped = train_output["Usm"][outvar]
+            try:
+                u_physical = SM["output_maps"][outvar].inverse_transform(copy.deepcopy(u_mapped))
+                uh_physical = SM["output_maps"][outvar].inverse_transform(copy.deepcopy(uh_mapped))
+            except Exception:
+                u_physical = SM["output_maps"][outvar].inverse_transform(
+                    copy.deepcopy(u_mapped).reshape(-1, 1)
+                ).ravel(order="F")
+                uh_physical = SM["output_maps"][outvar].inverse_transform(
+                    copy.deepcopy(uh_mapped).reshape(-1, 1)
+                ).ravel(order="F")
+
+            self.outputs[outvar] = {
+                "u_physical": copy.deepcopy(u_physical),
+                "u_mapped": copy.deepcopy(u_mapped),
+                "uh_mapped": copy.deepcopy(uh_mapped),
+                "uh_physical": copy.deepcopy(uh_physical),
+            }
+
+        # Now pick the output that should be shown and plot it
+        selected_output = None
+        for cb, plot_cb, _, _ in self.output_var_cbs:
+            if plot_cb.isChecked():
+                selected_output = cb.currentText()
+                break
+        if not selected_output and output_vars:
+            selected_output = output_vars[0]
+
+        if selected_output and selected_output in self.outputs:
+            out = self.outputs[selected_output]
+            self.update_result_plot(
+                SM=SM,
+                DATA2=new_data,
+                u_physical=out["u_physical"],
+                u_mapped=out["u_mapped"],
+                uh_mapped=out["uh_mapped"],
+                uh_physical=out["uh_physical"],
+                outvar=selected_output,
+                input_vars=input_vars,
+            )
+
+        self._wire_output_selectors()
+        self.save_state()
+
+
+    def _handle_mlp_training_results(self, trained_model, input_vars, output_vars,
+                                 map_input=None, map_output=None, model_type=None,
+                                 new_data=None):
+        """Store MLP model + scalers and run inference on training data for plotting."""
+        self.SM = {
+            "mlp_model": trained_model,
+            "mlp_input_vars": input_vars,
+            "mlp_output_vars": output_vars,
+            "input_maps": map_input or self.args.get("fitted_map_input", {}),
+            "output_maps": map_output or self.args.get("fitted_map_output", {}),
+            "mlp_model_type": model_type or self.args.get("mlp_model", "pointnet"),
+            "mlp_hidden": self.args.get("mlp_hidden", 128),
+            "training_method": "mlp",
+            "roi": copy.deepcopy(self.roi)
+        }
+
+        with open("./output/SM.pickle", "wb") as f:
+            pickle.dump(self.SM, f)
+
+        # === NEW: Run inference on training data so plots appear ===
+        if new_data is not None and map_input is not None and map_output is not None:
+            self.outputs = self._run_mlp_inference_on_training_data(
+                trained_model, new_data, input_vars, output_vars, map_input, map_output
+            )
+            self.DATA2 = new_data
+            self.input_vars = input_vars
+
+            # Pick first checked output (or first available) and plot
+            selected_output = None
+            for cb, plot_cb, _, _ in self.output_var_cbs:
+                if plot_cb.isChecked():
+                    selected_output = cb.currentText()
+                    break
+            if not selected_output and output_vars:
+                selected_output = output_vars[0]
+
+            if selected_output and selected_output in self.outputs:
+                out = self.outputs[selected_output]
+                self.update_result_plot(
+                    SM=self.SM,
+                    DATA2=new_data,
+                    u_physical=out["u_physical"],
+                    u_mapped=out["u_mapped"],
+                    uh_mapped=out["uh_mapped"],
+                    uh_physical=out["uh_physical"],
+                    outvar=selected_output,
+                    input_vars=input_vars,
+                )
+
+            self._wire_output_selectors()
+
+        QtWidgets.QMessageBox.information(
+            self,
+            "Neural Net Training Complete",
+            f"Model trained successfully!\n\n"
+            f"Architecture : {self.SM['mlp_model_type']}\n"
+            f"Inputs       : {input_vars}\n"
+            f"Outputs      : {output_vars}\n\n"
+            f"Model + fitted scalers saved to SM.pickle"
+        )
 
     def run_training(self):
         if self.data is None:
@@ -3860,6 +4178,66 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
                 "Select at least one input and one output for training."
             )
             return
+
+        # ======================================================
+        # Choose training method based on GUI selection
+        # ======================================================
+        selected_method = self.training_method_combo.currentText()
+
+        if selected_method == "Grid-based":
+            print("\n>>> Using GRID-BASED training")
+            new_data = self._prepare_grid_training_data(input_vars, output_vars)
+            train_output, SM = smb.sm_train(
+                self.roi, self.mesh_specs, self.args, DATA=copy.deepcopy(new_data)
+            )
+            self._handle_grid_training_results(train_output, SM, new_data, input_vars, output_vars)
+            return
+
+        elif selected_method in ["Neural PointNet (beta)", "Neural MLP (beta)"]:
+            print(f"\n>>> Using Neural Net training ({selected_method})")
+            new_data = self._prepare_grid_training_data(input_vars, output_vars)
+
+            map_input_cfg  = self.args.get("map_input", {})
+            map_output_cfg = self.args.get("map_output", {})
+
+            _, fitted_map_input  = smd.fit_and_transform_input(
+                copy.deepcopy(new_data['data']), maps=map_input_cfg)
+            _, fitted_map_output = smd.fit_and_transform_output(
+                copy.deepcopy(new_data['data']), maps=map_output_cfg)
+
+            # Map GUI labels to internal model names
+            if "PointNet" in selected_method:
+                model_type = "pointnet"
+            else:
+                model_type = "mlp"
+
+            mlp_args = dict(self.args)
+            mlp_args["map_input"]      = fitted_map_input
+            mlp_args["map_output"]     = fitted_map_output
+            mlp_args["mlp_model"]      = model_type          # ← clean internal name
+            mlp_args["mlp_epochs"]     = self.nn_epochs.value()
+            mlp_args["mlp_hidden"]     = self.nn_hidden.value()
+            mlp_args["mlp_batch_size"] = self.nn_batch.value()
+            mlp_args["mlp_lr"]         = self.nn_lr.value()
+
+            trained_model = smb.mlp_train(
+                self.roi, self.mesh_specs, mlp_args, DATA=copy.deepcopy(new_data)
+            )
+
+            self._handle_mlp_training_results(
+                trained_model, input_vars, output_vars,
+                map_input=fitted_map_input,
+                map_output=fitted_map_output,
+                model_type=model_type,
+                new_data=new_data
+            )
+            return
+
+        else:
+            QtWidgets.QMessageBox.critical(self, "Error", "Unknown training method selected.")
+    
+        # End NEW: Choose training method based on GUI selection
+        # ====================================================
 
         # Determine which output is selected for initial plotting
         selected_output = None

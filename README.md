@@ -77,7 +77,8 @@ pip install \
     pyDOE2 \
     tqdm \
     rtree \
-    scikit-learn
+    scikit-learn \
+    torch
 ```
 ## Stages and Folder Structure
 The framework is split into four self‑contained stages—each in its own folder (`1_Data_Generation`, `2_Data_Processing`, …). 
@@ -139,6 +140,21 @@ afterwards. For a quick, non-interactive health check use
 `python run_test_demo.py --test`. See [0_Demo_Test/CONTEXT.md](0_Demo_Test/CONTEXT.md)
 for details.
 
+## Training Methods
+The workflow and the training module (`training_module.py`) currently supports three different surrogate training approaches:
+
+| Method                    | Description                                      | MOOSE Export |
+|---------------------------|--------------------------------------------------|--------------|
+| **Grid-based**            | Classical piecewise-polynomial LAROMance method  | ✅ Supported |
+| **Neural PointNet (beta)**| PointNet architecture for point-cloud style data | ❌ Not supported |
+| **Neural MLP (beta)**     | Standard multi-layer perceptron                  | ❌ Not supported |
+
+**MLP**: A standard feed-forward neural network that maps fixed-length input vectors to outputs through fully connected layers.  
+**PointNet**: A neural architecture designed for unordered point sets that uses shared MLPs and symmetric max-pooling to achieve permutation invariance.
+
+> **Note:** Only the **Grid-based** method currently supports export to MOOSE C++ code via `port_surrogate_to_moose.py`. The two neural-network options are experimental and do not port to MOOSE code.
+
+
 ## Examples
 Below are brief pointers to the example folders that illustrate how to use each
 stage of the pipeline.  Detailed usage instructions are provided in the
@@ -150,6 +166,7 @@ stage of the pipeline.  Detailed usage instructions are provided in the
 * There is currently no dummy data generator model for stage **1-Data Generation** for testing or as example. 
 
 ## Limitations
+This workflow is documented for the intended four-step path, and originally for thermomechanical creep data. Scripts and utilies are thin wrappers and can break if intputs, file layouts, or call order differ from what the CONTEXT.md files describe. It is not a hardened library: edge cases, unusual model design, and non-standard data shapes are not fully guarded. Treat this README.md and CONTEXT.md files within each stage as the supported interface, and adjust the utilities if your case falls outside that path. 
 This workflow is documented for the intended four-step path, and originally for thermomechanical creep data. Scripts and utilies are thin wrappers and can break if intputs, file layouts, or call order differ from what the CONTEXT.md files describe. It is not a hardened library: edge cases, unusual model design, and non-standard data shapes are not fully guarded. Treat this README.md and CONTEXT.md files within each stage as the supported interface, and adjust the utilities if your case falls outside that path. 
 
 ## Contributing & Support

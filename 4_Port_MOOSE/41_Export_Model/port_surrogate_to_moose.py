@@ -55,6 +55,16 @@ file = open(path, 'rb')
 SM= pickle.load(file)
 file.close()
 
+# -------------------------------------------------------------------
+# Guard: MOOSE export currently only supports grid-based models
+# -------------------------------------------------------------------
+if "mlp_model" in SM or "mlp_model_path" in SM or SM.get("training_method") == "mlp":
+    model_type = SM.get("mlp_model_type", "MLP/PointNet")
+    print(f"\n[ERROR] MOOSE export is currently only supported for Grid-based models.")
+    print(f"        Detected model type: {model_type}")
+    print(f"        Aborting export.\n")
+    sys.exit(1)
+    
 # transform the roi lists to lists (from numpy arrays) for MOOSE compatibility
 for i, key in enumerate(SM['roi'].keys()):
     SM['roi'][key][0] = SM['input_maps'][key].inverse_transform(SM['mesh']['nodes'][:,i].min().reshape(-1,1))[0][0]
