@@ -1249,9 +1249,10 @@ def test_report_plots(valid_output : dict, x_key="vmJ2", y_key="temperature", z_
         col = i % 6 
         sim = numsims[sims[i]]
         simnumber.append(sim)
-        plotxy(valid_output['data'][sim]['t'], valid_output['data'][sim][z_key_data], xlog=logtraces, ylog=logtraces, marker='.', color='green', ax=axs[row,col], dark=dark)
-        # plotxy(valid_output['valid'][sim]['t'], valid_output['valid'][sim][z_key], xlog=logtraces, ylog=logtraces, marker='.-', color='orange', ax=axs[row,col], dark=dark)
-        plotxy(valid_output['valid'][sim]['t'], valid_output['valid'][sim][z_key], xlog=logtraces, ylog=logtraces, marker='.-', color='orange', ax=axs[row,col], dark=dark)
+        max_inc_data = min(len(valid_output['data'][sim]['t']), np.searchsorted(valid_output['data'][sim]['t'], max_time_in_maps, side='right'))
+        max_inc_valid = min(len(valid_output['valid'][sim]['t']), np.searchsorted(valid_output['valid'][sim]['t'], max_time_in_maps, side='right'))
+        plotxy(valid_output['data'][sim]['t'][0:max_inc_data], valid_output['data'][sim][z_key_data][0:max_inc_data], xlog=logtraces, ylog=logtraces, marker='.', color='green', ax=axs[row,col], dark=dark)
+        plotxy(valid_output['valid'][sim]['t'][0:max_inc_valid], valid_output['valid'][sim][z_key][0:max_inc_valid], xlog=logtraces, ylog=logtraces, marker='.-', color='orange', ax=axs[row,col], dark=dark)
         # If the input is an array
         if isinstance(valid_output['data'][sim][x_key_data], np.ndarray) and isinstance(valid_output['data'][sim][y_key_data], np.ndarray):
             subtitle_text = "{:.4}: {:4.0f} \n {:.4}: {:4.0f}".format(x_key_data, valid_output['data'][sim][x_key_data][-1], y_key_data, valid_output['data'][sim][y_key_data][-1])
