@@ -340,9 +340,6 @@ def trim_creep_dataset(DATA, trim_variable=None, trim_max_threshold=np.inf):
 
     return DATA
 
-
-# def curate_dataset(DATA, evm_max=None, U_evm_max=None, downsample_max_length=250,
-#                    downsample_factor=None, downsample_key='evm'):
 def curate_dataset(DATA, max_input_for_trim_key = None, max_input_for_trim_value=None, max_output_for_sim_removal_key=None, max_output_for_sim_removal_value=None, downsample_max_length=250,
                    downsample_factor=None, downsample_key='evm'):
     """

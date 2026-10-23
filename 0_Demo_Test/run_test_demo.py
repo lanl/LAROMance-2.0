@@ -28,6 +28,8 @@ Two mutually-exclusive modes:
               produced, and PAUSES between stages for you to inspect them.
               The demo ALWAYS keeps the generated artifacts so you can explore
               the fully-populated pipeline afterwards.
+              Dataset: examples/Viscoplasicity_Creep/
+                       Creep_runs_with_dislocation_density_tracking.pickle
 
     --test    Non-interactive smoke test: runs the same sequence, asserts the
               expected artifacts exist, prints a concise PASS summary and sets
@@ -36,6 +38,8 @@ Two mutually-exclusive modes:
               artifacts are cleaned up afterwards. Add --keep for a deeper test
               that retains the artifacts and prints the full per-stage table so
               you can inspect the files manually.
+              Dataset: examples/QuickTest/Creep_QuickTest.pickle (smaller,
+              faster dataset)
 
 The training step (stage 3.1) is reproduced *headlessly* via
 ``utils.sm_build.sm_train`` so that NO GUI toolkit (PySide6) is required. The
@@ -77,6 +81,18 @@ EXAMPLE_PICKLE = os.path.join(
     EXAMPLE_DIR, "Creep_runs_with_dislocation_density_tracking.pickle"
 )
 EXAMPLE_CONFIG = os.path.join(EXAMPLE_DIR, "Example_Training_Module_Config.json")
+
+# NEW: dataset used by --test (smaller / faster than the full demo dataset).
+QUICKTEST_DIR = os.path.join(REPO_ROOT, "examples", "QuickTest")
+QUICKTEST_PICKLE = os.path.join(QUICKTEST_DIR, "Creep_QuickTest.pickle")
+# NEW: config used by --test. Currently the same config as the demo; change
+# this path if the QuickTest dataset ships with its own config JSON.
+QUICKTEST_CONFIG = os.path.join(QUICKTEST_DIR, "Quicktest.json")
+
+# NEW: the dataset/config actually used by the current run. Defaults to the
+# demo dataset; main() switches these to the QuickTest versions under --test.
+ACTIVE_PICKLE = EXAMPLE_PICKLE
+ACTIVE_CONFIG = EXAMPLE_CONFIG
 
 STAGE2_DIR = os.path.join(REPO_ROOT, "2_Data_Processing")
 STAGE31_DIR = os.path.join(REPO_ROOT, "3_Surrogate_Modeling", "31_Surrogate_Training")
@@ -130,7 +146,7 @@ def banner(text):
 def say_cmd(cmd):
     """Show a shell command the way a user would type it in a terminal."""
     # print(C.DIM + "  (equivalent terminal command)" + C.END)
-    print("\n" + C.BLUE + C.BOLD + "  $ " + C.END + C.BLUE + cmd + C.END)
+    print("\n" + C.BLUE + C.BOLD + "  $" + C.END + C.BLUE + cmd + C.END)
 
 
 # Set to True in main() when running under --demo. Used by explain() so that the
@@ -309,14 +325,15 @@ def _tail(text, n=25):
 # ----------------------------------------------------------------------
 def stage1(results, interactive):
     banner("Stage 1 - Data Generation")
+    # CHANGED: message/command reflect whichever dataset is active.
     print(
         "  LAROMance ships NO high-fidelity generator; a user integrates their\n"
         "  own model here (see 1_Data_Generation/CONTEXT.md). For the demo we use\n"
         "  the pre-generated synthetic creep dataset shipped under examples/."
     )
-    say_cmd("ls examples/Viscoplasicity_Creep/*.pickle")
-    assert_exists(EXAMPLE_PICKLE, results)
-    assert_exists(EXAMPLE_CONFIG, results)
+    say_cmd("ls " + os.path.relpath(ACTIVE_PICKLE, REPO_ROOT))
+    assert_exists(ACTIVE_PICKLE, results)
+    assert_exists(ACTIVE_CONFIG, results)
     pause(interactive)
 
 
@@ -344,9 +361,11 @@ def stage2(results, interactive):
         "so the original example file stays intact in examples/ for re-runs."
     )
 
+    # CHANGED: file path shown comes from ACTIVE_PICKLE rather than a hard-coded
+    # folder name.
     explain(
         "ABOUT THE DATASET - WHAT THE CREEP SIMULATIONS CONTAIN\n"
-        "File: examples/Viscoplasicity_Creep/" + os.path.basename(EXAMPLE_PICKLE) + "\n"
+        "File: " + os.path.relpath(ACTIVE_PICKLE, REPO_ROOT) + "\n"
         "\n"
         "Each entry is ONE creep simulation: the time-history of a single\n"
         "material point in a tube wall of a fictitious polycrystalline metal,\n"
@@ -388,8 +407,10 @@ def stage2(results, interactive):
         "trends there."
     )
 
-    print("  Using the full example creep dataset...")
-    shutil.copy(EXAMPLE_PICKLE, subset_path)
+    # CHANGED: copy the ACTIVE dataset (demo vs. quick-test).
+    print("  Using the example creep dataset: {}".format(
+        os.path.relpath(ACTIVE_PICKLE, REPO_ROOT)))
+    shutil.copy(ACTIVE_PICKLE, subset_path)
     ok("dataset staged: " + os.path.relpath(subset_path, REPO_ROOT))
 
     cmd = (
@@ -859,7 +880,7 @@ def stage3_train(train_pkl, results, interactive):
         "   LOAD a config JSON to auto-populate every setting above (inputs,\n"
         "   outputs, scalers/ranges, element counts AND the ROI correction). The\n"
         "   very config this headless run uses -\n"
-        "       " + os.path.relpath(EXAMPLE_CONFIG, REPO_ROOT) + "\n"
+        "       " + os.path.relpath(ACTIVE_CONFIG, REPO_ROOT) + "\n"
         "   can be loaded straight into the GUI to reproduce these exact settings\n"
         "   with no manual clicking - a great starting point you can then tweak.\n"
         "\n"
@@ -880,7 +901,8 @@ def stage3_train(train_pkl, results, interactive):
     refs = os.path.join(STAGE31_DIR, "references")
     train_ref = stage_move(train_pkl, refs, TRAIN_NAME)
 
-    with open(EXAMPLE_CONFIG) as fh:
+    # CHANGED: load the ACTIVE config (demo vs. quick-test).
+    with open(ACTIVE_CONFIG) as fh:
         cfg = json.load(fh)
     with open(train_ref, "rb") as fh:
         curated = pickle.load(fh)
@@ -1502,11 +1524,13 @@ def main():
     mode = parser.add_mutually_exclusive_group(required=True)
     mode.add_argument(
         "--demo", action="store_true",
-        help="Interactive guided walkthrough of the full pipeline.",
+        help="Interactive guided walkthrough of the full pipeline "
+             "(uses the full Viscoplasicity_Creep example dataset).",
     )
     mode.add_argument(
         "--test", action="store_true",
-        help="Non-interactive smoke test; prints PASS/FAIL and sets exit code.",
+        help="Non-interactive smoke test; prints PASS/FAIL and sets exit code "
+             "(uses the smaller examples/QuickTest/Creep_QuickTest.pickle).",
     )
     parser.add_argument(
         "--keep", action="store_true",
@@ -1527,6 +1551,21 @@ def main():
     # In --test, show the full per-stage table only for a deeper (--keep) run.
     global VERBOSE_SUMMARY
     VERBOSE_SUMMARY = bool(args.demo or args.keep)
+
+    # NEW: pick the dataset/config according to the mode.
+    #   --demo -> full Viscoplasicity_Creep example dataset
+    #   --test -> examples/QuickTest/Creep_QuickTest.pickle
+    global ACTIVE_PICKLE, ACTIVE_CONFIG
+    if args.test:
+        ACTIVE_PICKLE = QUICKTEST_PICKLE
+        ACTIVE_CONFIG = QUICKTEST_CONFIG
+        if not os.path.isfile(ACTIVE_PICKLE):
+            print(C.RED + C.BOLD + "  ERROR: QuickTest dataset not found: "
+                  + C.END + os.path.relpath(ACTIVE_PICKLE, REPO_ROOT))
+            sys.exit(2)
+    else:
+        ACTIVE_PICKLE = EXAMPLE_PICKLE
+        ACTIVE_CONFIG = EXAMPLE_CONFIG
 
     if args.demo:
         banner("LAROMance 2.0  ·  Guided Pipeline Demo")

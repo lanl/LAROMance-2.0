@@ -87,7 +87,10 @@ Or the user can immediately add flags to the call if the user knows.
 ```bash
 python load_and_plot_data.py --pickle_files Creep_runs_with_dislocation_density_tracking.pickle  --max_length 150 --split_data 80 --concat --anchor_points 0.0,1e-14,1e-12,1e-11,1e-10,1e-9,1e-8,1e-7,1e-6,1e-5,1e-4,1e-2,0.2 --input_keys vmJ2,temperature --output_keys rhoc,U[evm],U[rhoc]
 ```
-
+or for the quick test data (faster for testing):
+```bash
+python load_and_plot_data.py --pickle_files Creep_QuickTest.pickle  --max_length 100 --split_data 80 --concat --anchor_points 0.0,1e-12,1e-10,1e-8,1e-6,1e-4,1e-2,0.2 --input_keys vmJ2,temperature --output_keys rhoc,U[evm],U[rhoc]
+```
 ### Data loading
 - `--pickle_files f1,f2,…`: Pickle files to include (comma-separated, relative to the `references` folder). If omitted, the single hard-coded `filename` is loaded.
 - `--split_data P`: Percentage (0-100) of curated simulations used for training. The rest are used for testing.

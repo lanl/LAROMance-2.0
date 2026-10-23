@@ -2938,12 +2938,12 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
             sim_lengths = np.asarray(meta['sim_lengths'], dtype=int)
             cumsum = np.concatenate(([0], np.cumsum(sim_lengths))).astype(int)
             segments = [np.arange(cumsum[i], cumsum[i+1]) for i in range(len(sim_lengths))]
-            print(f"[plotter] Using meta_data segmentation with {len(segments)} segments.")
+            print(f"[plot_time_series] Using meta_data segmentation with {len(segments)} segments.")
         else:
             diffs = np.diff(x)
             reset_indices = np.where(diffs < -abs_tol)[0] + 1
             segments = np.split(np.arange(len(x)), reset_indices) if len(reset_indices) > 0 else [np.arange(len(x))]
-            print(f"[plotter] Heuristic segmentation found {len(segments)} segments (reset indices: {reset_indices}).")
+            print(f"[plot_time_series] Heuristic segmentation for plotting time-series found.")
 
         # validation & refinement: ensure each segment has monotonically non-decreasing x.
         def refine_segments(segs):
