@@ -16,11 +16,11 @@ for the required values).
 ### 1️⃣ Automated call – all arguments on the command line
 
 ```bash
-python doe.py TEMP 600 1023 VMJ2 0 250 RHOC 1e11 1e13 RHOW 1e11 1e13 \
+python doe.py TEMP 600 1023 VMJ2 0 250 RHOC 1e11 1e13 \
     --number 3000 \
-    --log10 RHOC RHOW \
+    --log10 RHOC \
     --visualize \
-    --axes TEMP RHOC RHOW
+    --axes TEMP RHOC
 ```
 
 * **Triples** ``<label> <min> <max>`` are supplied in the order they should appear in the CSV header.
@@ -28,6 +28,16 @@ python doe.py TEMP 600 1023 VMJ2 0 250 RHOC 1e11 1e13 RHOW 1e11 1e13 \
 * ``--log10`` (optional) is a space‑separated list of labels whose bounds should be sampled in logarithmic (base‑10) space. The script converts the sampled values back to linear space before writing ``samples.csv``.
 * ``--visualize`` (optional) will open a 3‑D scatter plot of the generated sample set.
 * ``--axes`` (optional, requires ``--visualize``) lets you choose which three parameters are shown in the plot, e.g. ``TEMP RHOC RHOW``. If omitted, the first three parameters are used.
+
+## `samples.csv` format
+The file that is created in this step will have the following format (using example header strings consistent with the call example above). The first line of `samples.csv` must be a header with variable strings that should be consistent with the later processing script in stage *1.3 Batch Template Setup*. Example:
+
+```csv
+TEMP,VMJ2,RHOC
+800,150,19.25
+850,175,19.30
+900,200,19.35
+```
 
 ### 2️⃣ Interactive mode – no command‑line arguments
 

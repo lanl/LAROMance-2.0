@@ -25,11 +25,41 @@ The script:
 
 1. **Reads** the `samples.csv` created in step 1.2 - Design of Experiment. The file should be copied to the template input folder.
 2. **Creates** a new directory (`run_1`, `run_2`, …).
-3. **Copies** only the files that are needed for a simulation (`*.slurm`, `*.in`, `*.dat`, `*.sx`) from a template folder (`template_run_folder`).
-4. **Replaces** placeholder strings inside the copied files with the concrete values read from the CSV line.
+3. **Copies** only the files that are needed for a simulation (e.g., `*.slurm`, `*.in`, `*.dat`, `*.sx`) from a template folder (`template_run_folder`). These are specific to the model and its expected input format. This should be adjusted in `setup_run_folders.sh`  for each model.
+4. **Replaces** placeholder strings inside the copied files with the concrete values read from the CSV line. These placeholders should be consistent with the header strings for each variable in the `references/samples.csv` file that was generated in step *12_Design_of_Experiments*.
 5. (Optionally) **launches** an AutoJob helper to submit the whole batch at once (`--autojob`).
 
-Because the script works purely with *text substitution* (`sed`), it is agnostic to the actual physics solver – any code that can be driven by a set of input files and a SLURM batch script will work as long as the placeholders are present.
+Because the script works purely with *text substitution* (`sed`), it is agnostic to the actual physics solver – any code that can be driven by a set 
+of input files and a SLURM batch script will work as long as the placeholders are present. Below are instructions to help you understand and adapt the shell script for your purpose.
+
+### Adapting `setup_run_folders.sh`
+
+The script is set up for a three-parameter example (`TEMP`, `VMJ2`, `RHOC`). To use it with your own solver, edit these parts:
+
+1. **CSV columns:** list your `samples.csv` columns, in order, in the `read` line.
+   ```bash
+   tail -n +2 "$input_file" | while IFS=, read -r TEMP VMJ2 RHOC; do
+   ```
+
+2. **Files copied:** edit the `--include` patterns to match your template file types.
+   ```bash
+   rsync -avz --include="*.slurm" --include="*.in" --include="*.dat" --include="*.sx" --exclude="*"$sourcedir/ $newdir/
+   ```
+
+3. **Job name:** the text after `--job-name=` must match the placeholder in your `run.slurm`.
+   ```bash
+   sed -i "s/#SBATCH --job-name=LApx/#SBATCH --job-name=$newdir/g" $newdir/run.slurm
+   ```
+
+4. **Placeholders:** add or remove one `sed` line per placeholder. File names are case-sensitive and must match your template files.
+   ```bash
+   sed -i "s/TEMP_PLACE/$TEMP/g" "$newdir/BCFile.in"
+   sed -i "s/RHOC_PLACE/$RHOC/g" "$newdir/single_crystal_model.sx"
+   ```
+
+5. **Derived or fixed values:** replace the problem-specific calculations (`time_ramp`, `stress_rate_hoop`, `stress_rate_rad`) with your own, or delete them.
+
+6. **Job submission:** the `--autojob` option calls `~/bin/autojob`. Replace this with your own submission command if needed.
 
 ---
 
@@ -53,25 +83,6 @@ Because the script works purely with *text substitution* (`sed`), it is agnostic
 > **Important** – The `template_run_folder` is **manually prepared by the user**. It should contain **only** the skeleton input files with the placeholder strings indicated above. No actual simulation data belongs in this folder; the script will later copy and populate it for each sample.
 
 > The repository does **not** ship concrete input files. Users must create the placeholder files appropriate to their own simulation workflow and, if needed, edit `setup_run_folders.sh` to match any custom naming conventions.
-
----
-
-## `samples.csv` format
-
-| Column (order) | Placeholder used in the script | Meaning |
-|----------------|----------------------------------|---------|
-| `TEMP`         | `TEMP_PLACE`                     | Temperature (°C or K) for the BC file |
-| `VMJ2`         | `STRESS_HOOP_PLACE` (via `stress_rate_hoop`) | Hoop stress magnitude (used to compute a time ramp) |
-| `RHOC`         | `RHOC_PLACE`                      | Density (or other material constant) for the *.sx* file |
-
-The first line of `samples.csv` must be a header (it is ignored by the script). Example:
-
-```csv
-TEMP,VMJ2,RHOC
-800,150,19.25
-850,175,19.30
-900,200,19.35
-```
 
 ---
 
