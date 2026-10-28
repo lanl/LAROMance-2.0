@@ -1919,12 +1919,28 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
             plot_cb.setChecked(input_config["plot"])
             map_dropdown.setCurrentText(input_config["map"])
 
+        # for output_config in state.get("output_vars", []):
+        #     self.add_output_cb()
+        #     cb, plot_cb, map_dropdown = self.output_var_cbs[-1]
+        #     cb.setCurrentText(output_config["key"])
+        #     plot_cb.setChecked(output_config["plot"])
+        #     map_dropdown.setCurrentText(output_config["map"])
+
         for output_config in state.get("output_vars", []):
             self.add_output_cb()
-            cb, plot_cb, map_dropdown = self.output_var_cbs[-1]
+            cb, plot_cb, map_dropdown, bounds_cb = self.output_var_cbs[-1]
             cb.setCurrentText(output_config["key"])
             plot_cb.setChecked(output_config["plot"])
             map_dropdown.setCurrentText(output_config["map"])
+
+            bounds = output_config.get("bounds")
+            if bounds is not None:
+                cb.bounds_values = bounds
+                bounds_cb.setChecked(True)
+            else:
+                cb.bounds_values = None
+                bounds_cb.setChecked(False)
+
 
         self.args = state.get("args", {})
         self.update_dict_preview()
@@ -2322,7 +2338,7 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
             for cb, *_ in self.input_var_widgets:
                 cb.clear()
                 cb.addItems(self.input_keys)
-            for cb, _ in self.output_var_cbs:
+            for cb, *_ in self.output_var_cbs:
                 cb.clear()
                 cb.addItems(self.output_keys)
         else:
@@ -2330,7 +2346,7 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
             for cb, *_ in self.input_var_widgets:
                 cb.clear()
                 cb.addItems(self.input_keys)
-            for cb, _ in self.output_var_cbs:
+            for cb, *_ in self.output_var_cbs:
                 cb.clear()
                 cb.addItems(self.output_keys)
 
@@ -3014,7 +3030,7 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
         ax = fig.add_subplot(111)
 
         # colormap
-        cmap = cm.get_cmap('tab20', len(segments_to_plot))
+        cmap = colormaps['tab20'].resampled(len(segments_to_plot))
 
         for ic, seg in enumerate(segments_to_plot):
             color = cmap(ic)
@@ -3641,6 +3657,24 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
         self.result_plot_stack.setCurrentIndex(0)
         self.data_canvas_2d.draw()
 
+    def _get_result_plot_vars(self, input_vars):
+        """Return the two input variables to use for 2D/3D result plots.
+        Uses the variables with the 'Plot' checkbox ticked in the Data Preview
+        (restricted to those that were actually trained on); falls back to
+        base_dims / ordered_key / first two inputs."""
+        plot_vars = [w[0].currentText() for w in self.input_var_widgets
+                     if w[3].isChecked() and w[0].currentText() in input_vars]
+        # remove duplicates, keep order
+        plot_vars = list(dict.fromkeys(plot_vars))
+        if len(plot_vars) >= 2:
+            return plot_vars[0], plot_vars[1]
+
+        pm = self.mesh_specs.get("premade_mesh", {})
+        fallback = list(pm.get("base_dims") or pm.get("ordered_key") or input_vars)
+        fallback = [v for v in fallback if v in input_vars] or list(input_vars)
+        print("Warning: fewer than 2 Plot-selected inputs; using fallback variables.")
+        return fallback[0], fallback[1]
+    
     def update_result_plot(self, SM=None, DATA2=None, u_physical=None, u_mapped=None,
                        uh_physical=None, uh_mapped=None, outvar=None,
                        input_vars=None, rel_err=None):
@@ -3713,7 +3747,8 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
 
             smp.plotxy(x, u_physical, color='g', ax=ax)
             smp.plotxy(x, uh_physical, color='r', marker='-', ax=ax)
-            smp.plotxy(nodes, nodal_values, color='cyan', marker='o', ax=ax)
+            if not is_neural:
+                smp.plotxy(nodes, nodal_values, color='cyan', marker='o', ax=ax)
             
             # Set up axis labels with the variable names
             ax.set_xlabel(input_vars[0])
@@ -3728,7 +3763,11 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
             return
 
         # --- Multi-variable: add two canvases ---
-        var1, var2 = self.mesh_specs["premade_mesh"]["ordered_key"][:2]
+        # var1, var2 = self.mesh_specs["premade_mesh"]["ordered_key"][:2]
+        var1, var2 = self._get_result_plot_vars(input_vars)
+        # Column indices of these variables in the mesh node array
+        node_dim_names = list(input_vars)
+        ix1, ix2 = node_dim_names.index(var1), node_dim_names.index(var2)
 
         # Page 1: 2D Scatter and Mesh
         fig1 = Figure(figsize=(6, 5))
@@ -3796,11 +3835,16 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
         ax1.autoscale(enable=True, axis='both', tight=True)
 
         if not is_neural:
-            smp.visualize_mesh(
-                smd.backtransform_nodes(copy.deepcopy(SM['mesh']['nodes']), SM['input_maps']),
-                SM['mesh']['conn'], dim=2, ax=ax1,
-                show_node_numbers=False, show_elem_numbers=False
-            )
+            nodes_phys = smd.backtransform_nodes(copy.deepcopy(SM['mesh']['nodes']), SM['input_maps'])
+            if (ix1, ix2) == (0, 1):
+                smp.visualize_mesh(
+                    nodes_phys, SM['mesh']['conn'], dim=2, ax=ax1,
+                    show_node_numbers=False, show_elem_numbers=False
+                )
+                ax1.set_xlabel(var1)
+                ax1.set_ylabel(var2)
+            else:
+                print("Mesh overlay skipped: plotted variables are not the mesh base dimensions.")
 
         self.data_canvas_2d = FigureCanvas(fig1)
         self.setup_interactive_labels(fig1)
@@ -3850,8 +3894,10 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
                     nodal_values = copy.deepcopy(SM['nodal_values'][outvar])
 
                 # Assume 2 input dims, so take first 2 cols as x,y
-                x_nodes = nodes_xy[:, 0]
-                y_nodes = nodes_xy[:, 1]
+                # x_nodes = nodes_xy[:, 0]
+                # y_nodes = nodes_xy[:, 1]
+                x_nodes = nodes_xy[:, ix1]
+                y_nodes = nodes_xy[:, ix2]
                 z_nodes = nodal_values
 
                 # Scatter plot of nodes
@@ -3895,24 +3941,47 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
             self._plot_group.addButton(plot_cb)
 
             # Block signals while rewiring to avoid duplicate connections
-            cb.blockSignals(True)
-            plot_cb.blockSignals(True)
+            # cb.blockSignals(True)
+            # plot_cb.blockSignals(True)
 
-            # Disconnect any previous connections safely
-            try:
-                cb.currentIndexChanged.disconnect()
-            except Exception:
-                pass
-            try:
-                plot_cb.toggled.disconnect()
-            except Exception:
-                pass
+            # # Disconnect any previous connections safely
+            # try:
+            #     cb.currentIndexChanged.disconnect()
+            # except Exception:
+            #     pass
+            # try:
+            #     plot_cb.toggled.disconnect()
+            # except Exception:
+            #     pass
 
-            cb.blockSignals(False)
-            plot_cb.blockSignals(False)
+            # cb.blockSignals(False)
+            # plot_cb.blockSignals(False)
 
-            plot_cb.toggled.connect(lambda checked, combo=cb: checked and self.plot_output(combo.currentText()))
-            cb.currentIndexChanged.connect(lambda _, combo=cb, chk=plot_cb: chk.isChecked() and self.plot_output(combo.currentText()))
+            # plot_cb.toggled.connect(lambda checked, combo=cb: checked and self.plot_output(combo.currentText()))
+            # cb.currentIndexChanged.connect(lambda _, combo=cb, chk=plot_cb: chk.isChecked() and self.plot_output(combo.currentText()))
+            # Disconnect only the handlers we connected earlier (if any)
+            old = getattr(cb, "_plot_handlers", None)
+            if old is not None:
+                try:
+                    old[0].currentIndexChanged.disconnect(old[1])
+                except (RuntimeError, TypeError):
+                    pass
+                try:
+                    old[2].toggled.disconnect(old[3])
+                except (RuntimeError, TypeError):
+                    pass
+
+            def on_toggled(checked, combo=cb):
+                if checked:
+                    self.plot_output(combo.currentText())
+
+            def on_index_changed(_, combo=cb, chk=plot_cb):
+                if chk.isChecked():
+                    self.plot_output(combo.currentText())
+
+            plot_cb.toggled.connect(on_toggled)
+            cb.currentIndexChanged.connect(on_index_changed)
+            cb._plot_handlers = (cb, on_index_changed, plot_cb, on_toggled)
 
         # Ensure exactly one checkbox is checked
         checked = [b for b in self._plot_group.buttons() if b.isChecked()]
