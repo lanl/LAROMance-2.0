@@ -1,15 +1,16 @@
 /************************************************************************************/
-/* © 2026. Triad National Security, LLC. All rights reserved.                       */
+/*                       2026 Triad National Security, LLC                          */
+/*                                ALL RIGHTS RESERVED                               */
 /*                                                                                  */
-/* This program was produced under U.S. Government contract 89233218CNA000001 for   */
+/* This software was produced under U.S. Government contract 89233218CNA000001 for  */
 /* Los Alamos National Laboratory (LANL), which is operated by Triad National       */
 /* Security, LLC for the U.S. Department of Energy/National Nuclear Security        */
-/* Administration. All rights in the program are reserved by Triad National         */
-/* Security, LLC, and the U.S. Department of Energy/National Nuclear Security       */
-/* Administration. The Government is granted for itself and others acting on its    */
-/* behalf a nonexclusive, paid‑up, irrevocable worldwide license in this material to*/
-/* reproduce, prepare derivative works, distribute copies to the public, perform    */
-/* publicly and display publicly, and to permit others to do so.                    */
+/* Administration. The U.S. Government has rights to use, reproduce, and distribute */
+/* this software. NEITHER THE GOVERNMENT NOR TRIAD NATIONAL SECURITY, LLC MAKES ANY */
+/* WARRANTY, EXPRESS OR IMPLIED, OR ASSUMES ANY LIABILITY FOR THE USE OF THIS       */
+/* SOFTWARE. If software is modified to produce derivative works, such modified     */
+/* software should be clearly marked, so as not to confuse it with the version      */
+/* available from LANL.                                                             */
 /************************************************************************************/
 
 #include "LAROManceStressUpdateBaseUniversal.h"
@@ -27,7 +28,6 @@ using namespace Eigen;
 registerMooseObject("LaromanceApp", LAROManceStressUpdateBaseUniversal);
 registerMooseObject("LaromanceApp", ADLAROManceStressUpdateBaseUniversal);
 
-// Works only in -dbg mode?
 template <bool is_ad>
 InputParameters
 LAROManceStressUpdateBaseUniversalTempl<is_ad>::validParams()
@@ -47,10 +47,10 @@ LAROManceStressUpdateBaseUniversalTempl<is_ad>::validParams()
   params.addParam<MaterialPropertyName>("microstruct_param_3",
                                         "Optional coupled microstructure parameter 3");
 
-  MooseEnum error_lower_limit_behavior("ERROR WARN IGNORE EXCEPTION DONTHING USELIMIT",
+  MooseEnum error_lower_limit_behavior("ERROR WARN IGNORE EXCEPTION DONOTHING USELIMIT",
                                        "EXCEPTION");
   // Only allow ERROR and EXCEPTION on upper bounds
-  MooseEnum error_upper_limit_behavior("ERROR WARN IGNORE EXCEPTION DONTHING USELIMIT",
+  MooseEnum error_upper_limit_behavior("ERROR WARN IGNORE EXCEPTION DONOTHING USELIMIT",
                                        "EXCEPTION");
   params.addParam<MooseEnum>(
       "cell_input_window_low_failure",
@@ -196,6 +196,10 @@ LAROManceStressUpdateBaseUniversalTempl<is_ad>::validParams()
   // use std::string here to avoid automatic absolute path expansion
   params.addParam<FileName>("model", "LaRomance model JSON datafile");
   params.addParam<FileName>("export_model", "Write LaRomance model to JSON datafile");
+  
+  // MLP
+  params.addParam<FileName>("mlp_model",
+      "TorchScript (.pt) MLP exported from Python. If set, the MLP replaces the FE-grid lookup.");
 
   params.addParamNamesToGroup(
       "cell_dislocation_density_forcing_function wall_dislocation_density_forcing_function "
@@ -324,15 +328,29 @@ LAROManceStressUpdateBaseUniversalTempl<is_ad>::LAROManceStressUpdateBaseUnivers
   this->_check_range = true; // this may not be necessary?
 
   // load JSON datafile
-  if (this->isParamValid("model"))
+  if (this->isParamValid("mlp_model"))
   {
-    const auto model_file_name = this->getDataFileName("model");
-    std::ifstream model_file(model_file_name.c_str());
-    model_file >> _json;
+#ifdef MOOSE_LIBTORCH_ENABLED
+    const std::string path = this->template getParam<FileName>("mlp_model");
+    try
+    {
+      _torch_model = std::make_unique<torch::jit::Module>(torch::jit::load(path));
+      _torch_model->to(torch::kFloat64);
+      _torch_model->eval();
+      _use_mlp = true;
+    }
+    catch (const c10::Error & e)
+    {
+      this->paramError("mlp_model", "Failed to load TorchScript model: ", e.what());
+    }
+#else
+    this->paramError("mlp_model", "MOOSE was built without libtorch.");
+#endif
   }
 
   setupUnitConversionFactors(parameters);
 }
+
 
 template <bool is_ad>
 LAROManceStressUpdateBaseUniversalTempl<is_ad>::~LAROManceStressUpdateBaseUniversalTempl()
@@ -482,18 +500,21 @@ LAROManceStressUpdateBaseUniversalTempl<is_ad>::initialSetup()
   _output_transform = getOutputTransform();
   _input_transform = getInputTransform();
   _input_limits = getInputLimits();
-  _nodes = getNodes();
-  _connectivity_matrix = getConnectivityMatrix();
-  _nodal_values = getNodalValues();
-  _extrapolation_element = getExtrapolationElement();
-  _min_nodal_values = getMinValues();
-  _max_nodal_values = getMaxValues();
-
+  if (!_use_mlp)
+  {
+    _nodes = getNodes();
+    _connectivity_matrix = getConnectivityMatrix();
+    _nodal_values = getNodalValues();
+    _extrapolation_element = getExtrapolationElement();
+    _min_nodal_values = getMinValues();
+    _max_nodal_values = getMaxValues();
+  } 
   // resize containers to be filled later based
   // and immediately run some sanity checks:
-  _num_elements = _connectivity_matrix.size();
-  _num_outputs = _nodal_values.size();
-  _num_inputs = _input_limits.size();
+  _num_elements = _use_mlp ? 0 : _connectivity_matrix.size();
+  _num_outputs  = _use_mlp ? _output_transform.size() : _nodal_values.size();
+  _num_inputs   = _input_limits.size();
+  
 
   // Set up input and output indices based on dimensionality
   _input_indices.resize(_num_inputs);
@@ -710,7 +731,29 @@ LAROManceStressUpdateBaseUniversalTempl<is_ad>::initialSetup()
     Moose::err << std::endl;
   }
 
-  initializeRtreeIndex();
+  // MLP 
+  if (_use_mlp)
+  {
+#ifdef MOOSE_LIBTORCH_ENABLED
+    // sanity check: model must accept _num_inputs and provide >= _num_outputs columns
+    try
+    {
+      auto out = _torch_model->forward({torch::zeros({1, (long)_num_inputs}, torch::kFloat64)})
+                     .toTensor();
+      if (out.size(1) < (long)_num_outputs)
+        mooseError("In ", _name, ": MLP has ", out.size(1), " outputs, ROM expects ", _num_outputs);
+    }
+    catch (const c10::Error & e)
+    {
+      mooseError("In ", _name, ": MLP test forward failed: ", e.what());
+    }
+#endif
+  }
+  else    
+    initializeRtreeIndex();
+  // end MLP fork
+
+  // initializeRtreeIndex(); // when no MLP form exists
   mooseInfo("End of initial setup.");
 }
 
@@ -1038,6 +1081,11 @@ LAROManceStressUpdateBaseUniversalTempl<is_ad>::computeROM(const unsigned out_in
     raw_input_point[i] = MetaPhysicL::raw_value(this_input_point[i]);
   }
 
+  // MLP-fork:
+  if (_use_mlp)
+    return computeMLP(out_index, working_inputs, raw_input_point, derivative);
+
+  // Grid-based fork:
   // Create a map of dimension names to element numbers
   std::vector<std::string> dim_names;
   std::map<std::string, int> element_numbers;
@@ -1627,7 +1675,7 @@ LAROManceStressUpdateBaseUniversalTempl<is_ad>::computeROM(const unsigned out_in
         N[local] = lambda[v];
     }
 
-    // ========== NEW: physical derivatives for simplex ==========
+        // ========== NEW: physical derivatives for simplex ==========
     {
       const unsigned int n_nodes = node_indices.size();
       for (unsigned int p = 0; p < _num_inputs; ++p)
@@ -1674,7 +1722,7 @@ LAROManceStressUpdateBaseUniversalTempl<is_ad>::computeROM(const unsigned out_in
   }
   else if (active_type == "extruded-simplex")
   {
-    // 1-D edge derivatives – build them FIRST (only for extrusion dims)
+        // 1-D edge derivatives – build them FIRST (only for extrusion dims)
     std::vector<std::vector<GenericReal<is_ad>>> dshape_functions_dxi(_num_inputs);
     for (unsigned int d = 0; d < _num_inputs; ++d)
       dshape_functions_dxi[d] =
@@ -1775,7 +1823,7 @@ LAROManceStressUpdateBaseUniversalTempl<is_ad>::computeROM(const unsigned out_in
         N[local] = val;
       }
     }
-
+    
     // ========== NEW: physical derivatives for extruded-simplex ==========
     {
       const unsigned int n_nodes = node_indices.size();
@@ -1997,6 +2045,73 @@ LAROManceStressUpdateBaseUniversalTempl<is_ad>::computeROM(const unsigned out_in
   return std::make_pair(y, std::move(doutput_scaled_dx_scaled));
 }
 
+// MLP fork 
+template <bool is_ad>
+std::pair<GenericReal<is_ad>, std::vector<GenericReal<is_ad>>>
+LAROManceStressUpdateBaseUniversalTempl<is_ad>::computeMLP(
+    const unsigned out_index,
+    const std::vector<GenericReal<is_ad>> & raw_inputs,
+    const std::vector<GenericReal<is_ad>> & scaled_inputs,
+    const bool derivative)
+{
+  std::vector<GenericReal<is_ad>> dy_dx(_num_inputs, 0.0);
+  Real y_scaled = 0.0;
+
+#ifdef MOOSE_LIBTORCH_ENABLED
+  try
+  {
+    auto x = torch::zeros({1, (long)_num_inputs}, torch::kFloat64);
+    {
+      auto a = x.accessor<double, 2>();
+      for (unsigned int i = 0; i < _num_inputs; ++i)
+        a[0][i] = MetaPhysicL::raw_value(scaled_inputs[i]);
+    }
+    if (derivative)
+      x.set_requires_grad(true);
+
+    auto yt = _torch_model->forward({x}).toTensor()[0][out_index];
+    y_scaled = yt.item<double>();
+
+    if (derivative)
+    {
+      auto g = torch::autograd::grad({yt}, {x}, {torch::ones_like(yt)})[0];
+      auto ga = g.accessor<double, 2>();
+      for (unsigned int i = 0; i < _num_inputs; ++i)
+        dy_dx[i] = ga[0][i];            // d(scaled y)/d(scaled x_i), same as grid path
+    }
+  }
+  catch (const c10::Error & e)
+  {
+    mooseException("MLP forward/backward failed: ", e.what());
+  }
+#else
+  mooseError("MLP requested but MOOSE built without libtorch.");
+#endif
+
+  // Dimensional rate (dt = 1), same back-transform as grid path
+  Real y_phys = y_scaled;
+  convertOutput(y_phys, _output_transform, out_index, 1, 1, false);
+  GenericReal<is_ad> y = y_phys;
+
+  // AD: propagate the stress sensitivity (chain rule) so the consistent tangent is right
+  if constexpr (is_ad)
+  {
+    if (derivative)
+    {
+      Real dout = y_scaled;
+      convertOutput(dout, _output_transform, out_index, 1, 1, true);
+      Real din = MetaPhysicL::raw_value(raw_inputs[_stress_input_index]);
+      convertOutput(din, _input_transform, _stress_input_index, 1, 1, true);
+      const auto s = raw_inputs[_stress_input_index];
+      y += dout * MetaPhysicL::raw_value(dy_dx[_stress_input_index]) * din *
+           (s - MetaPhysicL::raw_value(s));
+    }
+  }
+
+  return std::make_pair(y, std::move(dy_dx));
+}
+// end of MLP fork
+
 template <bool is_ad>
 void
 LAROManceStressUpdateBaseUniversalTempl<is_ad>::printInBoundCheck(
@@ -2107,7 +2222,7 @@ LAROManceStressUpdateBaseUniversalTempl<is_ad>::printInBoundCheck(
           case WindowFailure::USELIMIT:
           {
             auto temp_original_input = input_values[i];
-            input_values[i] = _global_limits[i].first; // Actually modify the value
+            input_values[i] = _global_limits[i].second; // Actually modify the value
             mooseWarning("Input ",
                          i,
                          " above bounds: ",

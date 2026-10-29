@@ -4042,7 +4042,7 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
         import torch
         from sklearn.preprocessing import StandardScaler, MinMaxScaler
 
-        X_list = [np.asarray(new_data["data"][var], dtype=np.float32) for var in input_vars]
+        X_list = [np.asarray(new_data["data"][var], dtype=np.float64) for var in input_vars]
         X = np.column_stack(X_list)
 
         # Apply input scalers
@@ -4054,13 +4054,13 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
 
         # Forward pass
         with torch.no_grad():
-            X_tensor = torch.tensor(X_scaled, dtype=torch.float32)
+            X_tensor = torch.tensor(X_scaled, dtype=torch.float64)
             y_pred = trained_model(X_tensor).cpu().numpy()
 
         outputs = {}
         for j, var in enumerate(output_vars):
             uh_mapped = y_pred[:, j]
-            u_physical  = np.asarray(new_data["data"]["U"][var], dtype=np.float32)
+            u_physical  = np.asarray(new_data["data"]["U"][var], dtype=np.float64)
 
             scaler = fitted_map_output[var]
 
@@ -4152,6 +4152,7 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
                                  map_input=None, map_output=None, model_type=None,
                                  new_data=None):
         """Store MLP model + scalers and run inference on training data for plotting."""
+
         self.SM = {
             "mlp_model": trained_model,
             "mlp_input_vars": input_vars,
@@ -4166,6 +4167,10 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
 
         with open("./output/SM.pickle", "wb") as f:
             pickle.dump(self.SM, f)
+
+        # MLP export
+        from utils.mlp_utils import export_torchscript
+        export_torchscript(self.SM["mlp_model"], len(input_vars), "./output/mlp_model.pt")
 
         # === NEW: Run inference on training data so plots appear ===
         if new_data is not None and map_input is not None and map_output is not None:

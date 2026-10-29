@@ -334,8 +334,8 @@ def generate_verification_table(
     # --------------------------------------------------------------------- #
     # 5️⃣  Assemble CSV headers – time, all inputs, dt, then all outputs
     # --------------------------------------------------------------------- #
-    input_keys = list(roi.keys())                     # e.g. ['evm','rhoc','rhow','temperature','vmJ2','defect_rate']
-    output_keys = list(SM["nodal_values"].keys())    # e.g. ['evm','rhoc','rhow', ...]
+    input_keys = list(SM["input_maps"].keys())                     # e.g. ['evm','rhoc','rhow','temperature','vmJ2','defect_rate']
+    output_keys = list(SM["output_maps"].keys())    # e.g. ['evm','rhoc','rhow', ...]
 
     csv_headers = (
         ["time"]
@@ -1547,6 +1547,110 @@ std::vector<std::vector<GenericReal<is_ad>>>
            nodes_string, conn_string, nodal_values_string)
 
     return txt
+
+# GUI variable name -> MOOSE key. Adjust to your data's column names.
+MLP_INPUT_KEYS  = {"vmJ2": "stress", "temperature": "temperature", "evm": "old_strain", "rhoc": "cell", "rhow": "wall", "defect_rate" : "environmental"}
+MLP_OUTPUT_KEYS = {"evm": "strain", "rhoc": "cell", "rhow": "wall"}
+
+_T = "typename LAROManceStressUpdateBaseUniversalTempl<is_ad>::"
+f18 = lambda *v: ", ".join(f"{x:2.18e}" for x in v)
+
+def _scaler_str(s, inverse):
+    n = str(s)
+    if 'Compress' in n:
+        return f'{{"{"DECOMPRESS" if inverse else "COMPRESS"}", {_T}CompressTransform{{{f18(s.factor, s.compressor, s.original_min)}}}}}'
+    if 'SymLog' in n:
+        return f'{{"{"EXPSYMLOGBOUNDED" if inverse else "SYMLOGBOUNDED"}", {_T}SymLogTransform{{{f18(s.zmin, s.zmax, s.zbar, s.lowerbound, s.upperbound)}}}}}'
+    if 'LogScaler' in n:
+        return f'{{"{"EXP10BOUNDED" if inverse else "LOG10BOUNDED"}", {_T}Log10Transform{{{f18(s.factor, s.b, s.a, s.logmin, s.logmax)}}}}}'
+    if 'MinMax' in n:
+        return f'{{"{"INVMINMAX" if inverse else "MINMAX"}", {_T}MinMaxTransform{{{f18(s.data_min_[0], s.data_max_[0], s.feature_range[0], s.feature_range[1])}}}}}'
+    raise ValueError(f"Unsupported scaler for MOOSE export: {n}")
+
+
+def write_moose_h_mlp(SM, name):
+    return f'''#pragma once
+#include "LAROManceStressUpdateBaseUniversal.h"
+
+template <bool is_ad>
+class {name}Templ : public LAROManceStressUpdateBaseUniversalTempl<is_ad>
+{{
+public:
+  static InputParameters validParams();
+  {name}Templ(const InputParameters & parameters);
+
+protected:
+  virtual std::vector<std::pair<std::string, typename LAROManceStressUpdateBaseUniversalTempl<is_ad>::Transform>> getInputTransform() override;
+  virtual std::vector<std::pair<std::string, typename LAROManceStressUpdateBaseUniversalTempl<is_ad>::Transform>> getOutputTransform() override;
+  virtual std::vector<std::vector<GenericReal<is_ad>>> getInputLimits() override;
+  virtual void initializeKeyMaps() override;
+}};
+
+typedef {name}Templ<false> {name};
+typedef {name}Templ<true> AD{name};
+'''
+
+
+def write_moose_C_mlp(SM, name):
+    in_vars, out_vars = SM["mlp_input_vars"], SM["mlp_output_vars"]
+    in_sc  = ",\n".join(_scaler_str(SM["input_maps"][v],  False) for v in in_vars)
+    out_sc = ",\n".join(_scaler_str(SM["output_maps"][v], True)  for v in out_vars)
+    limits = ",\n".join("{" + f18(*SM["roi"][v]) + "}" for v in in_vars)
+    in_keys  = "\n".join(f'  this->setInputIndexByKey("{MLP_INPUT_KEYS[v]}", {i});'  for i, v in enumerate(in_vars))
+    out_keys = "\n".join(f'  this->setOutputIndexByKey("{MLP_OUTPUT_KEYS[v]}", {i});' for i, v in enumerate(out_vars))
+    return f'''#include "{name}.h"
+
+registerMooseObject("LaromanceApp", {name});
+registerADMooseObject("LaromanceApp", AD{name});
+
+template <bool is_ad>
+InputParameters
+{name}Templ<is_ad>::validParams()
+{{
+  InputParameters params = LAROManceStressUpdateBaseUniversalTempl<is_ad>::validParams();
+  params.addClassDescription("MLP creep update model for {name}");
+  return params;
+}}
+
+template <bool is_ad>
+{name}Templ<is_ad>::{name}Templ(const InputParameters & parameters)
+  : LAROManceStressUpdateBaseUniversalTempl<is_ad>(parameters) {{}}
+
+template <bool is_ad>
+void
+{name}Templ<is_ad>::initializeKeyMaps()
+{{
+  LAROManceStressUpdateBaseUniversalTempl<is_ad>::initializeKeyMaps();
+  // index == MLP input/output column (mlp_input_vars = {in_vars}, mlp_output_vars = {out_vars})
+{in_keys}
+{out_keys}
+}}
+
+template <bool is_ad>
+std::vector<std::pair<std::string, typename LAROManceStressUpdateBaseUniversalTempl<is_ad>::Transform>>
+{name}Templ<is_ad>::getInputTransform()
+{{
+  return {{{in_sc}
+  }};
+}}
+
+template <bool is_ad>
+std::vector<std::pair<std::string, typename LAROManceStressUpdateBaseUniversalTempl<is_ad>::Transform>>
+{name}Templ<is_ad>::getOutputTransform()
+{{
+  return {{{out_sc}
+  }};
+}}
+
+template <bool is_ad>
+std::vector<std::vector<GenericReal<is_ad>>>
+{name}Templ<is_ad>::getInputLimits()
+{{
+  return {{
+{limits}
+  }};
+}}
+'''
 
 def write_moose_C_4D_cached(SM: dict, name: str):
     """ 

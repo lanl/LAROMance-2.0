@@ -114,10 +114,10 @@ def mlp_train(roi, mesh_specs, args, DATA):
         print("[WARNING] No output scalers found in args — using raw data")
 
     # Build raw data
-    X_list = [np.asarray(DATA["data"][var], dtype=np.float32) for var in input_vars]
+    X_list = [np.asarray(DATA["data"][var], dtype=np.float64) for var in input_vars]
     X = np.column_stack(X_list)
 
-    y_list = [np.asarray(DATA["data"]["U"][var], dtype=np.float32) for var in output_vars]
+    y_list = [np.asarray(DATA["data"]["U"][var], dtype=np.float64) for var in output_vars]
     y = np.column_stack(y_list)
 
     print(f"Total training points: {X.shape[0]}")
@@ -197,7 +197,7 @@ def mlp_train(roi, mesh_specs, args, DATA):
 # Scaler Helper Functions (reused from grid-based path)
 # ============================================================
 def apply_input_scaler(x, scaler_type, config):
-    x = np.asarray(x, dtype=np.float32)
+    x = np.asarray(x, dtype=np.float64)
     if scaler_type == "minmax":
         xmin, xmax = config.get("range") or (-1.0, 1.0)
         x_min, x_max = np.min(x), np.max(x)
@@ -222,7 +222,7 @@ def apply_input_scaler(x, scaler_type, config):
 
 
 def apply_output_scaler(y, scaler_type, config):
-    y = np.asarray(y, dtype=np.float32)
+    y = np.asarray(y, dtype=np.float64)
     if scaler_type == "minmax":
         ymin, ymax = config.get("range") or (-1.0, 1.0)
         y_min, y_max = np.min(y), np.max(y)
@@ -247,7 +247,7 @@ def apply_output_scaler(y, scaler_type, config):
 
 def apply_output_scaler_inverse(y, scaler_type, config):
     """Inverse of apply_output_scaler (used during inference)."""
-    y = np.asarray(y, dtype=np.float32)
+    y = np.asarray(y, dtype=np.float64)
 
     if scaler_type == "minmax":
         ymin, ymax = config.get("range") or (-1.0, 1.0)
@@ -979,7 +979,7 @@ def rate_stepper(data: dict, SM: dict, sim_range: range, args: dict | None = Non
                     # --- MLP rate prediction ---
                     current_input = np.array(
                         [this_simulation[var][-1] for var in input_vars],
-                        dtype=np.float32
+                        dtype=np.float64
                     )
 
                     # input scaling
@@ -994,7 +994,7 @@ def rate_stepper(data: dict, SM: dict, sim_range: range, args: dict | None = Non
                     # forward pass
                     with torch.no_grad():
                         X_tensor = torch.tensor(current_input.reshape(1, -1),
-                                                dtype=torch.float32)
+                                                dtype=torch.float64)
                         y_pred = model(X_tensor).cpu().numpy().flatten()
 
                     # inverse scaling of rates

@@ -33,4 +33,4 @@ manually by the user using the `sm_analyze` helpers.
 ## Congratulations!
 You have completed the workflow and should now have a verified surrogate. 
 
-There is no constitutive model. Bend the code. -AR
+*There is no constitutive law. Bend the code.*

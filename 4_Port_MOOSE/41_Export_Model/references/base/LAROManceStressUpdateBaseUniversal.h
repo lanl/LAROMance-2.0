@@ -1,15 +1,16 @@
 /************************************************************************************/
-/* © 2026. Triad National Security, LLC. All rights reserved.                       */
+/*                       2026 Triad National Security, LLC                          */
+/*                                ALL RIGHTS RESERVED                               */
 /*                                                                                  */
-/* This program was produced under U.S. Government contract 89233218CNA000001 for   */
+/* This software was produced under U.S. Government contract 89233218CNA000001 for  */
 /* Los Alamos National Laboratory (LANL), which is operated by Triad National       */
 /* Security, LLC for the U.S. Department of Energy/National Nuclear Security        */
-/* Administration. All rights in the program are reserved by Triad National         */
-/* Security, LLC, and the U.S. Department of Energy/National Nuclear Security       */
-/* Administration. The Government is granted for itself and others acting on its    */
-/* behalf a nonexclusive, paid‑up, irrevocable worldwide license in this material to*/
-/* reproduce, prepare derivative works, distribute copies to the public, perform    */
-/* publicly and display publicly, and to permit others to do so.                    */
+/* Administration. The U.S. Government has rights to use, reproduce, and distribute */
+/* this software. NEITHER THE GOVERNMENT NOR TRIAD NATIONAL SECURITY, LLC MAKES ANY */
+/* WARRANTY, EXPRESS OR IMPLIED, OR ASSUMES ANY LIABILITY FOR THE USE OF THIS       */
+/* SOFTWARE. If software is modified to produce derivative works, such modified     */
+/* software should be clearly marked, so as not to confuse it with the version      */
+/* available from LANL.                                                             */
 /************************************************************************************/
 
 
@@ -18,6 +19,11 @@
 #include "RadialReturnCreepStressUpdateBase.h"
 #include "nlohmann/json.h"
 #include "libmesh/nanoflann.hpp"
+
+#ifdef MOOSE_LIBTORCH_ENABLED
+#include <torch/script.h>
+#include <torch/torch.h>
+#endif
 
 struct ROMAdaptor
 {
@@ -121,6 +127,20 @@ protected:
   computeROM(const unsigned out_index,
             std::vector<GenericReal<is_ad>> & input_values,
             const bool derivative);
+  
+  /// MLP fork of computeROM: same return contract (physical y, d(scaled y)/d(scaled x))
+  std::pair<GenericReal<is_ad>, std::vector<GenericReal<is_ad>>>
+  computeMLP(const unsigned out_index,
+             const std::vector<GenericReal<is_ad>> & raw_inputs,
+             const std::vector<GenericReal<is_ad>> & scaled_inputs,
+             const bool derivative);
+
+  /// True if a TorchScript model is used instead of the FE grid
+  bool _use_mlp{false};
+  #ifdef MOOSE_LIBTORCH_ENABLED
+    std::unique_ptr<torch::jit::Module> _torch_model;
+  #endif
+  /// end of MLP fork
 
   /**
    * Safely solves the linear system T * sol = rhs using LU decomposition.

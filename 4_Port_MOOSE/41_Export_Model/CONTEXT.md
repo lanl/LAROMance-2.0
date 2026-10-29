@@ -53,3 +53,40 @@ running the script.
 ```bash
 ~/project/bison/bison-opt -i verification.i
 ```
+
+## MOOSE installation guide
+Follow the Get Started section on www.mooseframework.gov.
+
+Start by creating a conda environment called, e.g., `moose`, and follow the instructions to create an app adjacent to your `projects/moose` folder and call the app, e.g., `LaromanceApp`.
+
+For the neural net (MLP-based) architectures, you'll need *torch*.
+
+### Installation Torch
+1. Install libtorch (from the MOOSE repo root)
+```bash
+cd ~/projects/moose
+./scripts/setup_libtorch.sh          # CPU build by default; see --help for options
+```
+2. Tell the build where it is
+```bash
+export LIBTORCH_DIR=$(pwd)/framework/contrib/libtorch
+```
+
+3. Reconfigure MOOSE with libtorch
+```bash
+./configure --with-libtorch
+```
+
+4. Rebuild the framework (a clean rebuild avoids stale objects)
+```bash
+cd framework
+make clean
+make -j8
+```
+
+5. Rebuild your app against it
+```bash
+cd ~/projects/LaromanceApp
+make clean
+make -j8
+```

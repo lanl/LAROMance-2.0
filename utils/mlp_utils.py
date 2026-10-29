@@ -20,12 +20,29 @@ andreruybalid@gmail.com
 -----------------------
 """
 
-import torch
+import torch, copy, json
 import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
 import numpy as np
 from pathlib import Path
 
+# For MLP-based exports of model
+def export_torchscript(model, n_inputs, path, x_check=None, double=True):
+    """Export a trained MLP/PointNet (tabular mode) for libtorch."""
+    m = copy.deepcopy(model).cpu().eval()
+    dtype = torch.float64 if double else torch.float32
+    m = m.to(dtype)
+    with torch.no_grad():
+        ts = torch.jit.trace(m, torch.zeros(1, n_inputs, dtype=dtype))
+    ts.save(path)
+
+    if x_check is not None:
+        x = torch.tensor(x_check[:5], dtype=dtype)
+        with torch.no_grad():
+            y = ts(x)
+        with open(path + ".check.json", "w") as f:
+            json.dump({"x_scaled": x.tolist(), "y_scaled": y.tolist()}, f, indent=2)
+    return path
 
 class PointDataset(Dataset):
     """
@@ -37,8 +54,8 @@ class PointDataset(Dataset):
         X : np.ndarray shape (N, n_inputs)
         y : np.ndarray shape (N, n_outputs)
         """
-        self.X = torch.tensor(X, dtype=torch.float32)
-        self.y = torch.tensor(y, dtype=torch.float32)
+        self.X = torch.tensor(X, dtype=torch.float64)
+        self.y = torch.tensor(y, dtype=torch.float64)
         self.augment = augment
 
     def __len__(self):
@@ -112,7 +129,7 @@ def train_mlp(X, y, model, epochs=150, batch_size=1024, lr=1e-3,
                         collate_fn=collate_fn,
                         drop_last=drop_last)
 
-    model = model.to(device)
+    model = model.to(device).double()
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     criterion = nn.MSELoss()
 
@@ -131,4 +148,10 @@ def train_mlp(X, y, model, epochs=150, batch_size=1024, lr=1e-3,
             }, f"{output_dir}/best_mlp_model.pt")
 
     print(f"\nTraining finished. Best loss: {best_loss:.6f}")
-    return model
+
+    ckpt = torch.load(f"{output_dir}/best_mlp_model.pt", map_location="cpu")
+    model.load_state_dict(ckpt["model_state"])
+    model.eval()
+    print(f"Restored best weights from epoch {ckpt['epoch']+1}")
+
+    return model.cpu()

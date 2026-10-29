@@ -58,18 +58,32 @@ file.close()
 # -------------------------------------------------------------------
 # Guard: MOOSE export currently only supports grid-based models
 # -------------------------------------------------------------------
-if "mlp_model" in SM or "mlp_model_path" in SM or SM.get("training_method") == "mlp":
-    model_type = SM.get("mlp_model_type", "MLP/PointNet")
-    print(f"\n[ERROR] MOOSE export is currently only supported for Grid-based models.")
-    print(f"        Detected model type: {model_type}")
-    print(f"        Aborting export.\n")
-    sys.exit(1)
+is_mlp = "mlp_model" in SM or SM.get("training_method") == "mlp"
+
+if is_mlp:
+    pt_path = "./references/mlp_model.pt"   # written at training time
+    if not os.path.isfile(pt_path):
+        sys.exit(f"[ERROR] {pt_path} not found. Retrain, or call export_torchscript first.")
+    with open(f"./output/{model_name}.C", "w") as f:
+        f.write(smpub.write_moose_C_mlp(SM, name=model_name))
+    with open(f"./output/{model_name}.h", "w") as f:
+        f.write(smpub.write_moose_h_mlp(SM, name=model_name))
+    import shutil
+    shutil.copy(pt_path, f"./output/{model_name}.pt")   # optional: name it after the model
+    print(f"MLP model files written to ./output ({model_name}.C/.h/.pt)")
+    print("Generating verification table...")
+    filename = "benchmarks.csv"
+    # Use generic verification table generation; number of inputs can be any size.
+    csv_data = smpub.generate_verification_table(SM, num_inputs = 1000,
+                                             output_directory='./output', output_filename=filename)
+
+    sys.exit(0)
     
-# transform the roi lists to lists (from numpy arrays) for MOOSE compatibility
-for i, key in enumerate(SM['roi'].keys()):
-    SM['roi'][key][0] = SM['input_maps'][key].inverse_transform(SM['mesh']['nodes'][:,i].min().reshape(-1,1))[0][0]
-    SM['roi'][key][1] = SM['input_maps'][key].inverse_transform(SM['mesh']['nodes'][:,i].max().reshape(-1,1))[0][0]
-    SM['roi'][key] = list(SM['roi'][key])
+# # transform the roi lists to lists (from numpy arrays) for MOOSE compatibility
+# for i, key in enumerate(SM['roi'].keys()):
+#     SM['roi'][key][0] = SM['input_maps'][key].inverse_transform(SM['mesh']['nodes'][:,i].min().reshape(-1,1))[0][0]
+#     SM['roi'][key][1] = SM['input_maps'][key].inverse_transform(SM['mesh']['nodes'][:,i].max().reshape(-1,1))[0][0]
+#     SM['roi'][key] = list(SM['roi'][key])
 
 # # Add extrapolation elements for temperature and stress using generic wrappers
 # SM_extrapolated_temperature = smpub.add_temperature_extrapolation_6d_element(copy.deepcopy(SM), new_lower_bound_temperature=293.0, evm_output=1e-28)
@@ -91,6 +105,7 @@ with open(SM_path, "wb") as file:
 # Publish the model under the name using the generic wrapper.
 print("Writing MOOSE model files...")
 textC = smpub.write_moose_C_4D_cached(SM_extrapolated_stress_temperature, name = model_name)
+# textC = smpub.write_moose_C_6D_cached(SM_extrapolated_stress_temperature, name = model_name)
 fileC = open(os.path.join('./output', str(model_name) +'.C'), "w")
 fileC.write(textC)
 fileC.close()
@@ -108,8 +123,3 @@ filename = "benchmarks.csv"
 # Use generic verification table generation; number of inputs can be any size.
 csv_data = smpub.generate_verification_table(SM, num_inputs = 1000,
                                              output_directory='./output', output_filename=filename)
-
-
-# # Run the generation of the verification input file
-# print("Generating verification input...")
-# smpub.generate_verification_input("./output/benchmarks.csv", "./references/verification.i", "./output/verification.i")
