@@ -116,6 +116,7 @@ class PointNetRegressor(nn.Module):
 class MoERegressor(nn.Module):
     def __init__(self, input_dim, hidden=128, num_layers=3, output_dim=1,
                  num_experts=4, top_k=2):
+        print("->MoERegressor<-")
         super().__init__()
         self.num_experts = num_experts
         self.top_k = top_k

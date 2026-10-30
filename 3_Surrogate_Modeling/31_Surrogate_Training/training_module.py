@@ -1571,6 +1571,11 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
         self.nn_lr.setDecimals(5)
         self.nn_lr.setValue(0.001)
 
+        nn_layout.addRow("Epochs:", self.nn_epochs)
+        nn_layout.addRow("Hidden Size:", self.nn_hidden)
+        nn_layout.addRow("Batch Size:", self.nn_batch)
+        nn_layout.addRow("Learning Rate:", self.nn_lr)
+
         # MoE
         self.nn_num_experts = QtWidgets.QSpinBox()
         self.nn_num_experts.setRange(2,16)
@@ -1579,14 +1584,19 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
         self.nn_top_k.setRange(1,8)
         self.nn_top_k.setValue(2)
 
-        nn_layout.addRow("Epochs:", self.nn_epochs)
-        nn_layout.addRow("Hidden Size:", self.nn_hidden)
-        nn_layout.addRow("Batch Size:", self.nn_batch)
-        nn_layout.addRow("Learning Rate:", self.nn_lr)
+        # Create the labels yourself
+        self.nn_num_experts_label = QtWidgets.QLabel("Num Experts:")
+        self.nn_top_k_label = QtWidgets.QLabel("Top-k:")
 
-        # MoE
-        nn_layout.addRow("Num Experts:", self.nn_lr)
-        nn_layout.addRow("Top-k:", self.nn_lr)
+        # Add them as pairs
+        nn_layout.addRow(self.nn_num_experts_label, self.nn_num_experts)
+        nn_layout.addRow(self.nn_top_k_label, self.nn_top_k)
+
+        # Hide by default
+        self.nn_num_experts.setVisible(False)
+        self.nn_top_k.setVisible(False)
+        self.nn_num_experts_label.setVisible(False)
+        self.nn_top_k_label.setVisible(False) 
 
         self.nn_group.setLayout(nn_layout)
         self.nn_group.setVisible(False)
@@ -1658,12 +1668,28 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
         outer.addWidget(scroll)
         return group
     
+    # def _update_training_method_ui(self):
+    #     method = self.training_method_combo.currentText()
+    #     is_nn = method in ["Neural PointNet", 
+    #                        "Neural MLP"]
+    #     self.nn_group.setVisible(is_nn)
     def _update_training_method_ui(self):
         method = self.training_method_combo.currentText()
-        is_nn = method in ["Neural PointNet", 
-                           "Neural MLP", 
-                           "Neural MoE"]
+        is_nn = method in [
+            "Neural PointNet",
+            "Neural MLP",
+            "Neural MoE (beta)",
+        ]
+        is_moe = "MoE" in method
+
         self.nn_group.setVisible(is_nn)
+
+        # Only if you created the extra MoE widgets
+        if hasattr(self, "nn_num_experts"):
+            self.nn_num_experts.setVisible(is_moe)
+            self.nn_top_k.setVisible(is_moe)
+            self.nn_num_experts_label.setVisible(is_moe)
+            self.nn_top_k_label.setVisible(is_moe)
 
     def trigger_lasso_selector(self):
         self.enable_lasso_selector = True
@@ -4283,7 +4309,7 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
             self._handle_grid_training_results(train_output, SM, new_data, input_vars, output_vars)
             return
 
-        elif selected_method in ["Neural PointNet (beta)", "Neural MLP (beta)"]:
+        elif selected_method in ["Neural PointNet", "Neural MLP", "Neural MoE (beta)"]:
             print(f"\n>>> Using Neural Net training ({selected_method})")
             new_data = self._prepare_grid_training_data(input_vars, output_vars)
 
@@ -4312,7 +4338,7 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
             mlp_args["mlp_batch_size"] = self.nn_batch.value()
             mlp_args["mlp_lr"]         = self.nn_lr.value()
 
-            mlp_args["moe_num_experts"]= self.nn_num_expert.value()
+            mlp_args["moe_num_experts"]= self.nn_num_experts.value()
             mlp_args["moe_top_k"]      = self.nn_top_k.value()
 
             trained_model = smb.mlp_train(

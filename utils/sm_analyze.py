@@ -257,9 +257,6 @@ def errorinc(valid_output, x = 'vmJ2', y = 'temperature', z = 'evm', min_relativ
         RMSE = np.vstack([RMSE, this_rmse])
         RISETIME = np.vstack([RISETIME, this_rise_time])
 
-        # if np.array(valid_output['data'][sim][x])[-1] > 50.0 and np.array(valid_output['data'][sim][y])[-1] > 900.0:
-        #     raise IOError("debug")
-
     # flatten the arrays to become 1D arrays (instead of nested arrays)
     X = X.flatten()
     Y = Y.flatten()

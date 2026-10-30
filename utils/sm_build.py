@@ -163,7 +163,7 @@ def mlp_train(roi, mesh_specs, args, DATA):
                 y_scaled[:, i] = apply_output_scaler(y[:, i], scaler_type if 'scaler_type' in locals() else None, scaler)
 
     # Create model
-    model_name = args.get("mlp_model", "pointnet", "moe")
+    model_name = args.get("mlp_model", "pointnet")
     hidden = args.get("mlp_hidden", 128)
     # MoE
     if "moe" in model_name:
