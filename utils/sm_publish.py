@@ -1727,8 +1727,6 @@ def write_moose_C_4D_cached(SM: dict, name: str):
     input_limits_string = '{\n' + ',\n'.join(map(str, input_limits)) + '\n}'
     rhoc_min = str(min(SM['roi']['rhoc']))
     rhoc_max = str(max(SM['roi']['rhoc']))
-    rhoc_min = str(min(SM['roi']['rhoc']))
-    rhoc_max = str(max(SM['roi']['rhoc']))
 
     # Input scalers
     input_scalers = []
