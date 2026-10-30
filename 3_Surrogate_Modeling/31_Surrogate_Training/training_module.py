@@ -1543,8 +1543,10 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
         self.training_method_combo = QtWidgets.QComboBox()
         self.training_method_combo.addItems([
             "Grid-based",
-            "Neural PointNet (beta)",
-            "Neural MLP (beta)"
+            "Neural PointNet",
+            "Neural MLP",
+            "Neural MoE (beta)",
+
         ])
         self.training_method_combo.setToolTip("Choose the surrogate training method")
         self.setup_layout.addWidget(self.training_method_combo)
@@ -1569,10 +1571,22 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
         self.nn_lr.setDecimals(5)
         self.nn_lr.setValue(0.001)
 
+        # MoE
+        self.nn_num_experts = QtWidgets.QSpinBox()
+        self.nn_num_experts.setRange(2,16)
+        self.nn_num_experts.setValue(4)
+        self.nn_top_k = QtWidgets.QSpinBox()
+        self.nn_top_k.setRange(1,8)
+        self.nn_top_k.setValue(2)
+
         nn_layout.addRow("Epochs:", self.nn_epochs)
         nn_layout.addRow("Hidden Size:", self.nn_hidden)
         nn_layout.addRow("Batch Size:", self.nn_batch)
         nn_layout.addRow("Learning Rate:", self.nn_lr)
+
+        # MoE
+        nn_layout.addRow("Num Experts:", self.nn_lr)
+        nn_layout.addRow("Top-k:", self.nn_lr)
 
         self.nn_group.setLayout(nn_layout)
         self.nn_group.setVisible(False)
@@ -1646,7 +1660,9 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
     
     def _update_training_method_ui(self):
         method = self.training_method_combo.currentText()
-        is_nn = method in ["Neural PointNet (beta)", "Neural MLP (beta)"]
+        is_nn = method in ["Neural PointNet", 
+                           "Neural MLP", 
+                           "Neural MoE"]
         self.nn_group.setVisible(is_nn)
 
     def trigger_lasso_selector(self):
@@ -4282,6 +4298,8 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
             # Map GUI labels to internal model names
             if "PointNet" in selected_method:
                 model_type = "pointnet"
+            elif "MoE" in selected_method:
+                model_type = "moe"
             else:
                 model_type = "mlp"
 
@@ -4293,6 +4311,9 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
             mlp_args["mlp_hidden"]     = self.nn_hidden.value()
             mlp_args["mlp_batch_size"] = self.nn_batch.value()
             mlp_args["mlp_lr"]         = self.nn_lr.value()
+
+            mlp_args["moe_num_experts"]= self.nn_num_expert.value()
+            mlp_args["moe_top_k"]      = self.nn_top_k.value()
 
             trained_model = smb.mlp_train(
                 self.roi, self.mesh_specs, mlp_args, DATA=copy.deepcopy(new_data)

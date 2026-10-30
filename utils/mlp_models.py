@@ -22,7 +22,6 @@ andreruybalid@gmail.com
 import torch
 import torch.nn as nn
 
-
 # ============================================================
 # 1. Basic MLP (no global context)
 # ============================================================
@@ -111,14 +110,84 @@ class PointNetRegressor(nn.Module):
             return out.view(B, N, -1)
 
 # ============================================================
-# 3. Model Factory
+# 3. Mixture of Experts: MLP + Gating net
+# ============================================================
+
+class MoERegressor(nn.Module):
+    def __init__(self, input_dim, hidden=128, num_layers=3, output_dim=1,
+                 num_experts=4, top_k=2):
+        super().__init__()
+        self.num_experts = num_experts
+        self.top_k = top_k
+
+        # Gate: small network that outputs expert weights
+        self.gate = nn.Sequential(
+            nn.Linear(input_dim, hidden // 2),
+            nn.ReLU(),
+            nn.Linear(hidden // 2, num_experts)
+        )
+
+        # Experts: ordinary MLPs (reuse your existing pattern)
+        self.experts = nn.ModuleList([
+            MLPRegressor(input_dim, hidden, num_layers, output_dim)
+            for _ in range(num_experts)
+        ])
+
+    def forward(self, x):
+        # Handle both [B, D] and [B, N, D] if needed
+        if x.dim() == 3:
+            B, N, D = x.shape
+            x = x.view(B * N, D)
+            reshape = True
+        else:
+            reshape = False
+
+        # Gate scores
+        gate_logits = self.gate(x)               # [B, num_experts]
+        gate_weights = torch.softmax(gate_logits, dim=-1)
+
+        # Sparse top-k (optional; remove for dense MoE)
+        topk_vals, topk_idx = torch.topk(gate_weights, self.top_k, dim=-1)
+        mask = torch.zeros_like(gate_weights).scatter_(-1, topk_idx, 1.0)
+        gate_weights = gate_weights * mask
+        gate_weights = gate_weights / (gate_weights.sum(dim=-1, keepdim=True) + 1e-8)
+
+        # Weighted combination of experts
+        out = torch.zeros(x.size(0), self.experts[0].net[-1].out_features,
+                          device=x.device, dtype=x.dtype)
+        for i, expert in enumerate(self.experts):
+            expert_out = expert(x)
+            out += gate_weights[:, i:i+1] * expert_out
+
+        if reshape:
+            out = out.view(B, N, -1)
+        return out 
+    
+# ============================================================
+# 4. Model Factory
 # ============================================================
 MODEL_REGISTRY = {
     "mlp": MLPRegressor,
     "pointnet": PointNetRegressor,
+    "moe": MoERegressor 
 }
 
-def get_model(model_name, input_dim, hidden=128, output_dim=1):
+def get_model(model_name, input_dim, hidden=128, output_dim=1,
+              num_experts=4, top_k=2, **kwargs):
     if model_name not in MODEL_REGISTRY:
         raise ValueError(f"Unknown model: {model_name}")
-    return MODEL_REGISTRY[model_name](input_dim=input_dim, hidden=hidden, output_dim=output_dim)
+
+    cls = MODEL_REGISTRY[model_name]
+
+    if model_name == "moe":
+        return cls(
+            input_dim=input_dim,
+            hidden=hidden,
+            output_dim=output_dim,
+            num_experts=num_experts,
+            top_k=top_k,
+            **kwargs
+        )
+    else:
+        # MLP and PointNet ignore the extra MoE args
+        return cls(input_dim=input_dim, hidden=hidden, output_dim=output_dim) 

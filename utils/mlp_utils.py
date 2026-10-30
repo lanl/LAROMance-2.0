@@ -26,7 +26,8 @@ from torch.utils.data import Dataset, DataLoader
 import numpy as np
 from pathlib import Path
 
-# For MLP-based exports of model
+
+# Export torch models for use in MOOSE 
 def export_torchscript(model, n_inputs, path, x_check=None, double=True):
     """Export a trained MLP/PointNet (tabular mode) for libtorch."""
     m = copy.deepcopy(model).cpu().eval()
@@ -70,13 +71,19 @@ class PointDataset(Dataset):
             x = x + torch.randn_like(x) * 0.01
 
         return x, y
-
+    
 
 def collate_fn(batch):
     """Simple collate for fixed-size point data (no padding needed)."""
     xs, ys = zip(*batch)
     return torch.stack(xs), torch.stack(ys)
 
+
+# # Helper function for gating networks (MoE)
+# def load_balance_loss(gate_weights):
+#     # Encourage uniform expert usage
+#     expert_usage = gate_weights.mean(dim=0)
+#     return (expert_usage * torch.log(expert_usage + 1e-8)).sum() 
 
 def train_one_epoch(model, loader, optimizer, criterion, device):
     model.train()
