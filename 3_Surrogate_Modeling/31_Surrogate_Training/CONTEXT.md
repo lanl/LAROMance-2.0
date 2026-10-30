@@ -8,14 +8,10 @@ LAROMance-2.0 supports three surrogate modeling approaches. The **grid-based red
 
 The GUI provides three training options via the **Training Method** selector:
 
-| Option                    | Internal Name | Use Case                              | MOOSE Compatible |
-|---------------------------|---------------|---------------------------------------|------------------|
-| Grid-based                | grid          | Production-grade surrogate models     | Yes              |
-| Neural PointNet (beta)    | pointnet      | Experimental neural surrogate         | No               |
-| Neural MLP (beta)         | mlp           | Experimental neural surrogate         | No               |
-
+**Grid**: Finite-element mesh interpolation-based method that calibrates the output value of preconfigured nodal coordinates across inputs space, then interpolates between nodes. 
 **MLP**: A standard feed-forward neural network that maps fixed-length input vectors to outputs through fully connected layers.
 **PointNet**: A neural architecture designed for unordered point sets that uses shared MLPs and symmetric max-pooling to achieve permutation invariance.
+**MoE** (Mixture of Experts): A model that splits work among several specialist MLP "experts", while a learned gating network decides, for each input, which experts to use and how to weight their outputs.  
 
 > When a neural method is selected, additional hyperparameters (epochs, hidden size, batch size, learning rate) become available.
 
@@ -27,6 +23,8 @@ The GUI provides three training options via the **Training Method** selector:
 | **Batch Size**   | Number of samples per gradient update     | Noisy gradients, slower but sometimes better generalization | Smoother but potentially poorer generalization | 512–2048 is usually a good range for surrogate modeling. |
 | **Learning Rate**| Step size of weight updates               | Very slow convergence                        | Divergence or unstable training               | Start at `1e-3`. Reduce to `5e-4` or `1e-4` if training is unstable. |
 | **Epochs**       | Number of full passes over the training data | Underfitting (model hasn’t learned enough)   | Overfitting (model memorizes training data)   | 30–100 for most surrogate problems. Use early stopping if possible. |
+| **Num Experts**       |Number of parallel expert MLPs the gating network can choose from (num_experts) | Limited specialization – each expert must cover a large part of the input space, so the model behaves like a single MLP   | More parameters and memory, some experts rarely get used (expert collapse / load imbalance), and the gate may overfit on small datasets   | 4–8 for small or medium surrogate problems. Increase only if the data has distinct regimes, and monitor expert utilization. |
+| **Top k**       |Number of experts activated per input (sparse routing, top_k); the gate's outputs are renormalized over these k experts | k=1: cheapest and most specialized, but routing is hard and non-smooth, gradients to the gate are poor, and training can be unstable  | k close to num_experts: nearly dense MoE, so there is no compute savings and less specialization   | k=2 is the common default (with num_experts ≥ 4). Must satisfy 1 ≤ k ≤ num_experts. |
 
 **Rules of Thumb**
 
@@ -36,11 +34,8 @@ The GUI provides three training options via the **Training Method** selector:
 - **Learning Rate**: If the loss oscillates or increases, reduce the learning rate by a factor of 2–5. If the loss decreases very slowly, try increasing it slightly.
 - **Epochs**: Monitor the training loss. If it stops improving for many epochs, further training is usually not helpful (and can lead to overfitting).
 - **Interaction**: These parameters are coupled. A larger hidden size often benefits from a slightly lower learning rate and more epochs.
-  
 
-**Important:** The MOOSE export pipeline (`port_surrogate_to_moose.py`) only supports models trained with the **Grid-based** method. Neural models will be rejected with a clear error message.
-
-A complete User Manual for the GUI is located in [LAROMANCE_USER_MANUAL.pdf](3_Surrogate_Modeling/31_Surrogate_Training/doc/LAROMANCE_USER_MANUAL.pdf). Note this manual does not describe the more recently added neural network methods (Pointnet/MLP).
+A more visual User Manual for the GUI is located in [LAROMANCE_USER_MANUAL.pdf](3_Surrogate_Modeling/31_Surrogate_Training/doc/LAROMANCE_USER_MANUAL.pdf). Note this manual does not describe the more recently added neural network methods (Pointnet/MLP).
 
 ## What the script does
 

@@ -146,13 +146,15 @@ The workflow and the training module (`training_module.py`) currently supports t
 | Method                    | Description                                      | MOOSE Export |
 |---------------------------|--------------------------------------------------|--------------|
 | **Grid-based**            | Classical piecewise-polynomial LAROMance method  | ✅ Supported |
-| **Neural PointNet (beta)**| PointNet architecture for point-cloud style data | ❌ Not supported |
-| **Neural MLP (beta)**     | Standard multi-layer perceptron                  | ❌ Not supported |
+| **Neural PointNet**| PointNet architecture for point-cloud style data | ✅ Supported  |
+| **Neural MLP**     | Standard multi-layer perceptron                  | ✅ Supported  |
+| **Neural MoE**     | Mixture of Experts: MLP + Gating                  | ✅ Supported  |
 
 **MLP**: A standard feed-forward neural network that maps fixed-length input vectors to outputs through fully connected layers.  
-**PointNet**: A neural architecture designed for unordered point sets that uses shared MLPs and symmetric max-pooling to achieve permutation invariance.
+**PointNet**: A neural architecture designed for unordered point sets that uses shared MLPs and symmetric max-pooling to achieve permutation invariance.  
+**MoE** (Mixture of Experts): A model that splits work among several specialist MLP "experts", while a learned gating network decides, for each input, which experts to use and how to weight their outputs.  
 
-> **Note:** Only the **Grid-based** method currently supports export to MOOSE C++ code via `port_surrogate_to_moose.py`. The two neural-network options are experimental and do not port to MOOSE code.
+> **Note:** All models can port to MOOSE code. The neural net-based models require MOOSE to be built with libtorch.
 
 
 ## Examples
