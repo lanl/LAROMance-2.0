@@ -3935,9 +3935,7 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
                 elif self.toggle_mapped_output_in_plots.isChecked():
                     nodal_values = copy.deepcopy(SM['nodal_values'][outvar])
 
-                # Assume 2 input dims, so take first 2 cols as x,y
-                # x_nodes = nodes_xy[:, 0]
-                # y_nodes = nodes_xy[:, 1]
+                # Use the selected inputs in GUI to plot
                 x_nodes = nodes_xy[:, ix1]
                 y_nodes = nodes_xy[:, ix2]
                 z_nodes = nodal_values

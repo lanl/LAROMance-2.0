@@ -50,6 +50,21 @@ from utils import sm_data as smd
 from utils import sm_plot as smp
 
 # ============================================================
+# Shared helper: pretty R² report (used by both grid and neural paths)
+# ============================================================
+def _print_r2_report(r2_dict, title="Training fit quality"):
+    """Pretty-print R² values with color coding (green ≥0.99, yellow ≥0.95, red <0.95)."""
+    GREEN, YEL, RED, BOLD, END = "\033[92m", "\033[93m", "\033[91m", "\033[1m", "\033[0m"
+    print(f"\n{BOLD}===== {title} ====={END}")
+    for key, val in r2_dict.items():
+        if key == "M_condition":
+            continue
+        col = GREEN if val >= 0.99 else (YEL if val >= 0.95 else RED)
+        print(f"\t{BOLD}R-squared {key}:\t{col}{val:4.3f}{END}")
+    if "M_condition" in r2_dict:
+        print(f"\t{BOLD}Condition number M:\t{r2_dict['M_condition']:4.2f}{END}")
+
+# ============================================================
 # MLP Inference Helper
 # ============================================================
 
@@ -193,9 +208,23 @@ def mlp_train(roi, mesh_specs, args, DATA):
         drop_last=True
     )
 
+    # === Compute R² on scaled training data ===
+    with torch.no_grad():
+        y_pred_scaled = trained_model(torch.tensor(X_scaled, dtype=torch.float64)).cpu().numpy()
+
+    r2_scaled = {var: sma.r2(y_scaled[:, j], y_pred_scaled[:, j])
+                 for j, var in enumerate(output_vars)}
+
+
+    # Pretty report (unified with grid path)
+    _print_r2_report(r2_scaled, title="Training fit quality (Neural)")
+
     print("\n" + "="*60)
     print("MLP TRAINING COMPLETE")
     print("="*60 + "\n")
+
+    # Attach metrics to the returned model for convenience
+    trained_model._r2_scaled = r2_scaled
 
     return trained_model
 
@@ -705,14 +734,10 @@ def sm_train(roi: dict, mesh_specs: dict, args : dict, DATA : dict = None, data_
     sys.stdout.flush()
 
     
-    # Print R² for each output key
-    GREEN, YEL, RED, BOLD, END = "\033[92m", "\033[93m", "\033[91m", "\033[1m", "\033[0m"
-    print(f"\n{BOLD}===== Training fit quality ====={END}")
-    for key in output_keys:
-        val = r2[key]
-        col = GREEN if val >= 0.99 else (YEL if val >= 0.95 else RED)
-        print(f"\t{BOLD}R-squared {key}:\t{col}{val:4.2f}{END}")
-    print(f"\t{BOLD}Condition number M:\t{condM:4.2f}{END}")
+    # Print R² for each output key (using unified helper)
+    r2_report = dict(r2)
+    r2_report["M_condition"] = condM
+    _print_r2_report(r2_report, title="Training fit quality")
     sys.stdout.flush()
 
     ## ===================================
