@@ -34,12 +34,11 @@ bold full-width rows acting as group dividers so the whole surrogate is
 overviewable at once. Colored metrics flag quality inline. The groups are:
 
 - **DATA** — train/test simulations, data points, increments/sim (avg · max),
-  input/output variables, and (if used) the points added by augmentation
-  (total · average per simulation).
-- **TRAINING** — R² per output (colored), condition number, and the
-  interp-matrix & regression wall-times.
-- **TESTING** — relative-RMSE per output as mean · median · max (mean colored),
-  total testing wall-time, and wall-time **per increment** (single-evaluation cost).
+  the points added by augmentation (total · average per simulation, if used),
+  and the input/output variables.
+- **TRAINING** — R² per output (colored) and condition number.
+- **TESTING** — relative-RMSE per output as mean · std (mean colored), and the
+  testing wall-time as total · per increment (single-evaluation cost).
 - **MODEL & DEPLOYMENT** — architecture (`grid`/`mlp`/`pointnet`/`moe`) and its
   settings (grid: element numbers/type & mesh counts; mlp: epochs/hidden/params;
   moe: experts/top-k), plus the ported MOOSE `.C`/`.h`/`.pt` and verification files.

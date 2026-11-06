@@ -19,7 +19,7 @@ to do so.
 andreruybalid@gmail.com
 -----------------------
 
-Generate a single, colour-coded Markdown BENCHMARK REPORT that summarises the
+Generate a single, color-coded Markdown BENCHMARK REPORT that summarises the
 whole LAROMance pipeline. It globs every stage's ``output`` folder for the
 ``benchmark_*.json`` files written throughout stages 2 -> 4 (via
 ``utils.sm_report.log_stage_metrics``) and assembles:
@@ -31,7 +31,7 @@ whole LAROMance pipeline. It globs every stage's ``output`` folder for the
     * Testing metrics (relative RMSE per output, total + per-increment wall-time)
     * Ported MOOSE file names
 
-Metrics are colour-rated green/yellow/red via emoji badges (GitHub-safe) with
+Metrics are color-rated green/yellow/red via emoji badges (GitHub-safe) with
 the same thresholds used elsewhere in the codebase (R2 >=.99 green, >=.95
 yellow, else red).
 
@@ -51,10 +51,10 @@ import datetime
 sys.path.append(os.path.abspath(os.path.join(__file__, '..', '..', '..')))
 from utils import sm_report as smr
 
-# ANSI colours for the short console summary (match sm_build._print_r2_report).
+# ANSI colors for the short console summary (match sm_build._print_r2_report).
 _GREEN, _YEL, _RED, _BOLD, _END = "\033[92m", "\033[93m", "\033[91m", "\033[1m", "\033[0m"
 _ANSI = {"good": _GREEN, "ok": _YEL, "bad": _RED, "unknown": ""}
-# Hex colours used for inline-HTML coloured text in the Markdown report.
+# Hex colors used for inline-HTML colored text in the Markdown report.
 _HEX = {"good": "#2ca02c", "ok": "#e6a700", "bad": "#d62728", "unknown": "#808080"}
 
 
@@ -125,9 +125,9 @@ def _fmt(val, fmt="{}"):
 
 
 def _rated(value, rating, fmt="{:.4f}"):
-    """Return a colour-styled (inline-HTML) markdown fragment for a rated metric."""
-    colour = _HEX.get(rating, _HEX["unknown"])
-    return f'<span style="color:{colour}">{_fmt(value, fmt)}</span>'
+    """Return a color-styled (inline-HTML) markdown fragment for a rated metric."""
+    color = _HEX.get(rating, _HEX["unknown"])
+    return f'<span style="color:{color}">{_fmt(value, fmt)}</span>'
 
 
 # ----------------------------------------------------------------------
@@ -165,14 +165,14 @@ def build_markdown(stages):
             _row(md, f"{part} · increments/sim (avg · max)",
                  f"{_fmt(p.get('avg_increments_per_simulation'), '{:.0f}')} · "
                  f"{_fmt(p.get('max_increments_per_simulation'))}")
-        _row(md, "inputs", ", ".join(data.get("input_variables", [])) or "—")
-        _row(md, "outputs", ", ".join(data.get("output_variables", [])) or "—")
         aug = data.get("augmentation")
         if aug:
             _row(md, "augmentation · +pts (total · avg/sim)",
                  "{} · {}".format(
                      _fmt(aug.get("total_points_added"), "{:,}"),
                      _fmt(aug.get("avg_points_added_per_sim"), "{:.0f}")))
+        _row(md, "inputs", ", ".join(data.get("input_variables", [])) or "—")
+        _row(md, "outputs", ", ".join(data.get("output_variables", [])) or "—")
     else:
         _row(md, "_missing_", "")
 
@@ -185,11 +185,6 @@ def build_markdown(stages):
             _row(md, f"R² · `{k}`", _rated(v, smr.r2_rating(v), "{:.4f}"))
         if "M_condition" in tm:
             _row(md, "condition number (M)", _fmt(tm.get("M_condition"), "{:.1f}"))
-        wt = train.get("walltimes_s", {})
-        if "interp_matrix" in wt:
-            _row(md, "wall-time · interp-matrix", f"{wt['interp_matrix']:.2f} s")
-        if "regression" in wt:
-            _row(md, "wall-time · regression", f"{wt['regression']:.2f} s")
     else:
         _row(md, "_missing_", "")
 
@@ -199,16 +194,17 @@ def build_markdown(stages):
         tm = test.get("testing_metrics", {})
         rr = tm.get("relative_rmse_per_output", {})
         for k, v in rr.items():
-            _row(md, f"rel-RMSE · `{k}` (mean · median · max)",
-                 "{} · {} · {}".format(
+            _row(md, f"rel-RMSE · `{k}` (mean · std)",
+                 "{} · {}".format(
                      _rated(v.get("mean"), smr.relrmse_rating(v.get("mean")), "{:.4f}"),
-                     _fmt(v.get("median"), "{:.4f}"),
-                     _fmt(v.get("max"), "{:.4f}")))
-        if tm.get("total_wall_time_s") is not None:
-            _row(md, "wall-time · total", f"{tm['total_wall_time_s']:.2f} s")
+                     _fmt(v.get("std"), "{:.4f}")))
+        total = tm.get("total_wall_time_s")
         wpi = tm.get("wall_time_per_increment_s")
-        if wpi is not None:
-            _row(md, "wall-time · per increment", f"{wpi*1e3:.3f} ms")
+        if total is not None or wpi is not None:
+            _row(md, "wall-time · (total · per increment)",
+                 "{} · {}".format(
+                     f"{total:.2f} s" if total is not None else "_n/a_",
+                     f"{wpi*1e3:.3f} ms" if wpi is not None else "_n/a_"))
     else:
         _row(md, "_missing_", "")
 
@@ -230,7 +226,7 @@ def build_markdown(stages):
         _row(md, "_missing_", "")
 
     md.append("")
-    md.append(f'_Colour key — R²: <span style="color:{_HEX["good"]}">≥{smr.R2_GOOD}</span> '
+    md.append(f'_color key — R²: <span style="color:{_HEX["good"]}">≥{smr.R2_GOOD}</span> '
               f'<span style="color:{_HEX["ok"]}">≥{smr.R2_OK}</span> '
               f'<span style="color:{_HEX["bad"]}">&lt;{smr.R2_OK}</span> · '
               f'rel-RMSE: <span style="color:{_HEX["good"]}">≤{smr.RELRMSE_GOOD}</span> '

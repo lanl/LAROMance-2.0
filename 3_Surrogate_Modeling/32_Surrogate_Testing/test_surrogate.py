@@ -239,8 +239,7 @@ def run_testing(forced_outputs):
                     if _vals.size:
                         _rel_rmse_per_output[z_key] = {
                             "mean": float(_np.mean(_vals)),
-                            "median": float(_np.median(_vals)),
-                            "max": float(_np.max(_vals)),
+                            "std": float(_np.std(_vals)),
                         }
                 except Exception as _ei_exc:
                     print(f"[benchmark] WARNING: REL_RMSE for '{z_key}' skipped: {_ei_exc}")
