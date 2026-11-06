@@ -105,7 +105,7 @@ LAROMance-2.0
 |
 └─ 4_Deploy                        – Export the trained surrogate as a MOOSE material model and assemble a benchmark report
 │   ├─ 41_Export_MOOSE             – Uses a MOOSE material file template to fill with the surrogate parameters, and generates a benchmark file with inputs/outputs to test the eventual MOOSE model outputs against.
-│   └─ 42_Benchmark_Report         – Globs the per-stage `benchmark_*.json` artefacts (data stats, metadata, model settings, training/testing metrics, ported MOOSE files) into one colour-coded Markdown report. Optionally also run the manual MOOSE verification test and analyze/plot results; the difference between benchmark and MOOSE output should approach machine-precision.
+│   └─ 42_Benchmark_Report         – Globs the per-stage `benchmark_*.json` artefacts (data stats, metadata, model settings, training/testing metrics, ported MOOSE files) into one color-coded Markdown report. Optionally also run the manual MOOSE verification test and analyze/plot results; the difference between benchmark and MOOSE output should approach machine-precision.
 |
 └─5_Clean_Pipeline                 – Clean generated artefacts from previous stages (remove `output` and `references` directories, keep documentation, utils and example data). Run `5_Clean_Pipeline/clean_pipeline.sh` after completing stage 4.2 or when restarting the workflow from an archived copy.
  

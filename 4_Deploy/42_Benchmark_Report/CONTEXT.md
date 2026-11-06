@@ -1,7 +1,7 @@
 # 4.2 - Benchmark Report (Deploy)
 
 This final step closes the pipeline by (1) letting you visualise the compiled
-MOOSE benchmark output and (2) assembling a single, colour-coded **benchmark
+MOOSE benchmark output and (2) assembling a single, Color-coded **benchmark
 report** that summarises every stage of the workflow.
 
 ---
@@ -46,9 +46,9 @@ report to `./output/benchmark_report.md`.
 - **Ported MOOSE files** — model name and the generated `.C`/`.h`/`.pt` and
   verification-table filenames.
 
-### Colour coding
+### Color coding
 
-Key metrics are rendered as **coloured text** using inline HTML
+Key metrics are rendered as **Colored text** using inline HTML
 (`<span style="color:…">`), which renders in the VS Code Markdown preview and
 most Markdown viewers. The thresholds match those already used on the console:
 
