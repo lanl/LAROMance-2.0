@@ -29,6 +29,7 @@ import numpy as np
 sys.path.append(os.path.abspath(os.path.join(__file__, '..', '..')))
 from utils import sm_data as smd
 from utils import sm_plot as smp
+from utils import sm_report as smr
 
 # Directory containing the reference pickle files (relative to this script)
 data_path = os.path.join(os.path.dirname(__file__), "references")
@@ -472,6 +473,39 @@ avg_len = sum(TRAIN_DATA['meta_data']['sim_lengths']) / len(TRAIN_DATA['meta_dat
 print(f"Updated average training simulation length: {avg_len:.1f}")
 
 # ----------------------------------------------------------------------
+# Benchmark logging: persist data statistics for the final report
+# ----------------------------------------------------------------------
+try:
+    _input_vars, _output_vars = get_variable_names(data)
+    _train_lengths = TRAIN_DATA['meta_data']['sim_lengths']
+    _data_metrics = {
+        "source_files": file_list,
+        "num_simulations_loaded": len(data),
+        "input_variables": _input_vars,
+        "output_variables": _output_vars,
+        "train": {
+            "num_simulations": len(_train_lengths),
+            "total_data_points": int(sum(_train_lengths)),
+            "avg_increments_per_simulation": float(sum(_train_lengths) / len(_train_lengths)),
+            "max_increments_per_simulation": int(max(_train_lengths)),
+        },
+    }
+    if args.split_data is not None and TEST_DATA is not None:
+        _test_lengths = TEST_DATA['meta_data']['sim_lengths']
+        _data_metrics["split_pct_train"] = args.split_data
+        _data_metrics["test"] = {
+            "num_simulations": len(_test_lengths),
+            "total_data_points": int(sum(_test_lengths)),
+            "avg_increments_per_simulation": (
+                float(sum(_test_lengths) / len(_test_lengths)) if _test_lengths else 0.0
+            ),
+            "max_increments_per_simulation": int(max(_test_lengths)) if _test_lengths else 0,
+        }
+    smr.log_stage_metrics(smr.STAGE_DATA_PROCESSING, _data_metrics, output_dir="./output")
+except Exception as _exc:
+    print(f"[benchmark] WARNING: data-processing metric logging skipped: {_exc}")
+
+# ----------------------------------------------------------------------
 # Determine which input and output keys to plot (defaults if not provided)
 # ----------------------------------------------------------------------
 input_keys = clean_keys(args.input_keys) if args.input_keys else ["t", "evm"]
@@ -549,6 +583,18 @@ if args.anchor_points:
                                                 remove_initial_below_max_key="vmJ2")
         plot_all(TRAIN_DATA['data'], filename="curated_and_augmented_training",
                  color='purple', **plot_kwargs)
+
+        # Append the augmentation summary to the Stage 2 benchmark JSON
+        try:
+            _aug = TRAIN_DATA['meta_data'].get('augmentation_summary')
+            if _aug is not None:
+                smr.log_stage_metrics(
+                    smr.STAGE_DATA_PROCESSING,
+                    {"augmentation": _aug},
+                    output_dir="./output",
+                )
+        except Exception as _exc:
+            print(f"[benchmark] WARNING: augmentation metric logging skipped: {_exc}")
 
 # ----------------------------------------------------------------------
 # Concatenate training data (always when --split_data is used, else if --concat)

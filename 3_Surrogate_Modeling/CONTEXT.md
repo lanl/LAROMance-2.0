@@ -13,7 +13,7 @@ Stage 31 (`training_module.py`) offers three training back-ends:
 - **Neural PointNet (beta)** – uses a PointNet architecture. Currently for research only. No MOOSE FE-solver models in this format yet.
 - **Neural MLP (beta)** – standard multi-layer perceptron. Currently for research/experimentation only. No MOOSE FE-solver models in this format yet.
 
-Only the **Grid-based** method is compatible with the MOOSE export script (`4_Port_MOOSE/41_Export_Model/port_surrogate_to_moose.py`).
+Only the **Grid-based** method is compatible with the MOOSE export script (`4_Deploy/41_Export_MOOSE/port_surrogate_to_moose.py`).
 
 ## 32_Surrogate_Testing
 Test the surrogate model error in an accumulated fashion, and on unseen data during training, to test for overfitting.

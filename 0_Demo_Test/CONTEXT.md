@@ -93,8 +93,9 @@ python run_test_demo.py --help
    - *3.1 Training* – headless `sm_train` call (GUI bypassed) → `SM.pickle`.
    - *3.2 Testing* – runs `32_Surrogate_Testing/test_surrogate.py` (coupled
      oracle mode) → validation plots + `Testing_result_*.pickle`.
-4. **4 – Port MOOSE**: runs `41_Export_Model/port_surrogate_to_moose.py` →
-   MOOSE `.C`/`.h` source, `benchmarks.csv`, mesh visualization.
+4. **4 – Deploy**: runs `41_Export_MOOSE/port_surrogate_to_moose.py` →
+   MOOSE `.C`/`.h` source, `benchmarks.csv`, mesh visualization; then
+   `42_Benchmark_Report/generate_benchmark_report.py` → `benchmark_report.md`.
 5. **5 – Clean Pipeline**: runs `5_Clean_Pipeline/clean_pipeline.sh --dry-run`
    to confirm the clean-up tooling is present and reports what *would* be
    removed (the harness never deletes stage 1–5 artifacts itself).

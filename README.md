@@ -103,9 +103,9 @@ LAROMance-2.0
 │   ├─ 31_Surrogate_Training          – Use the GUI to train the model; produce training diagnostics/metrics
 │   └─ 32_Surrogate_Testing           – Evaluate on (preferably unseen) test data; plot testing metrics
 |
-└─ 4_Port_Moose                    – Export the trained surrogate as a MOOSE material model
-│   ├─ 41_Export_Model             – Uses a MOOSE material file template to fill with the surrogate parameters, and generates a benchmark file with inputs/outputs to test the eventual MOOSE model outputs against.
-│   └─ 42_Analyze_Benchmark_Test   – Manual step: run the MOOSE verification test with the benchmark file (outside of this workflow) and then analyze/plot some results. The difference between benchmark and MOOSE output should approach machine-precision.
+└─ 4_Deploy                        – Export the trained surrogate as a MOOSE material model and assemble a benchmark report
+│   ├─ 41_Export_MOOSE             – Uses a MOOSE material file template to fill with the surrogate parameters, and generates a benchmark file with inputs/outputs to test the eventual MOOSE model outputs against.
+│   └─ 42_Benchmark_Report         – Globs the per-stage `benchmark_*.json` artefacts (data stats, metadata, model settings, training/testing metrics, ported MOOSE files) into one colour-coded Markdown report. Optionally also run the manual MOOSE verification test and analyze/plot results; the difference between benchmark and MOOSE output should approach machine-precision.
 |
 └─5_Clean_Pipeline                 – Clean generated artefacts from previous stages (remove `output` and `references` directories, keep documentation, utils and example data). Run `5_Clean_Pipeline/clean_pipeline.sh` after completing stage 4.2 or when restarting the workflow from an archived copy.
  
@@ -141,11 +141,11 @@ afterwards. For a quick, non-interactive health check use
 for details.
 
 ## Training Methods
-The workflow and the training module (`training_module.py`) currently supports three different surrogate training approaches:
+The workflow and the training module (`training_module.py`) currently supports **four** different surrogate training architectures:
 
 | Method                    | Description                                      | MOOSE Export |
 |---------------------------|--------------------------------------------------|--------------|
-| **Grid-based**            | Classical piecewise-polynomial LAROMance method  | ✅ Supported |
+| **Grid-based**            | Original piecewise-polynomial mesh-based LAROMance [1] | ✅ Supported |
 | **Neural PointNet**| PointNet architecture for point-cloud style data | ✅ Supported  |
 | **Neural MLP**     | Standard multi-layer perceptron                  | ✅ Supported  |
 | **Neural MoE**     | Mixture of Experts: MLP + Gating                  | ✅ Supported  |
@@ -174,7 +174,7 @@ This workflow is documented for the intended four-step path, and originally for 
 ## Contributing & Support
 If this workflow is useful to you, a **GitHub star** on the repository is genuinely appreciated and helps others discover the project. Please also **reference this repository** in any work that builds on it.
 
-**Forks are welcome** for those who wish to develop, extend, or adapt the pipeline to their own material models. If you have **ideas, suggestions, or questions**, they are welcome via the email address provided at the top of this README (Andre Ruybalid | andreruybalid@gmail.com).
+**Forks are welcome** for those who wish to develop, extend, or adapt the pipeline to their own material models. If you have **ideas, suggestions, or questions**, they are welcome via the email address provided at the top of this README.
 
 ##  Software Notice
 © 2026. Triad National Security, LLC. All rights reserved.

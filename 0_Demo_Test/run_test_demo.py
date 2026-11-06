@@ -97,7 +97,8 @@ ACTIVE_CONFIG = EXAMPLE_CONFIG
 STAGE2_DIR = os.path.join(REPO_ROOT, "2_Data_Processing")
 STAGE31_DIR = os.path.join(REPO_ROOT, "3_Surrogate_Modeling", "31_Surrogate_Training")
 STAGE32_DIR = os.path.join(REPO_ROOT, "3_Surrogate_Modeling", "32_Surrogate_Testing")
-STAGE4_DIR = os.path.join(REPO_ROOT, "4_Port_MOOSE", "41_Export_Model")
+STAGE4_DIR = os.path.join(REPO_ROOT, "4_Deploy", "41_Export_MOOSE")
+STAGE42_DIR = os.path.join(REPO_ROOT, "4_Deploy", "42_Benchmark_Report")
 STAGE5_DIR = os.path.join(REPO_ROOT, "5_Clean_Pipeline")
 
 WORK_DIR = os.path.join(STAGE_DIR, "_work")
@@ -1319,19 +1320,19 @@ def stage3_test(sm_path, test_pkl, results, interactive):
 
 
 # ----------------------------------------------------------------------
-# Stage 4 - Port to MOOSE
+# Stage 4 - Deploy (Export to MOOSE + Benchmark Report)
 # ----------------------------------------------------------------------
 def stage4(sm_path, results, interactive):
-    banner("Stage 4 - Port to MOOSE")
+    banner("Stage 4 - Deploy")
     refs = os.path.join(STAGE4_DIR, "references")
     out_dir = os.path.join(STAGE4_DIR, "output")
     os.makedirs(refs, exist_ok=True)
     os.makedirs(out_dir, exist_ok=True)
     explain(
         "PIPELINE STEP - MOVE FILES TO THE NEXT STAGE\n"
-        "Porting (Stage 4.1) consumes the trained SM.pickle. In the real\n"
+        "Exporting (Stage 4.1) consumes the trained SM.pickle. In the real\n"
         "pipeline it is MOVED forward from the previous stage's references into\n"
-        "    4_Port_MOOSE/41_Export_Model/references/\n"
+        "    4_Deploy/41_Export_MOOSE/references/\n"
         "(factory-line semantics - no wasteful copies of the large pickle), then\n"
         "you run the exporter. It fills a MOOSE material-model template with the\n"
         "surrogate's parameters, producing C++ source (.C/.h) plus a\n"
@@ -1342,7 +1343,7 @@ def stage4(sm_path, results, interactive):
 
     section("Exporting the surrogate to a MOOSE material model")
     cmd = "python port_surrogate_to_moose.py {}".format(MOOSE_MODEL_NAME)
-    say_cmd("cd 4_Port_MOOSE/41_Export_Model && " + cmd)
+    say_cmd("cd 4_Deploy/41_Export_MOOSE && " + cmd)
     cmd_list = [sys.executable, "port_surrogate_to_moose.py", MOOSE_MODEL_NAME]
     code, out = run_subprocess(cmd_list, STAGE4_DIR, stdin_text="\n")
     show_output(out, label="port_surrogate_to_moose.py console output")
@@ -1356,6 +1357,38 @@ def stage4(sm_path, results, interactive):
     assert_exists(os.path.join(out_dir, MOOSE_MODEL_NAME + ".C"), results)
     assert_exists(os.path.join(out_dir, MOOSE_MODEL_NAME + ".h"), results)
     assert_exists(os.path.join(out_dir, "benchmarks.csv"), results)
+    pause(interactive)
+
+    # ------------------------------------------------------------------
+    # Stage 4.2 - Assemble the running benchmark report
+    # ------------------------------------------------------------------
+    report_out = os.path.join(STAGE42_DIR, "output")
+    os.makedirs(report_out, exist_ok=True)
+    explain(
+        "STAGE 4.2 - BENCHMARK REPORT\n"
+        "Throughout stages 2-4 each script quietly appended its already-printed\n"
+        "stats and metrics to a small benchmark_<stage>.json inside that stage's\n"
+        "output/ folder (data size, scalers/ranges, model architecture & settings,\n"
+        "training R2, testing relative-RMSE, wall-times, ported MOOSE files).\n"
+        "Stage 4.2 globs those JSONs and assembles ONE Markdown report where the\n"
+        "key metrics are COLOUR-CODED green/amber/red (inline-HTML coloured text,\n"
+        "rendered in the VS Code Markdown preview) using the same thresholds the\n"
+        "console uses for R2 (>=.99 / >=.95) and relative-RMSE (<=.05 / <=.10)."
+    )
+    section("Generating the benchmark report")
+    cmd = "python generate_benchmark_report.py"
+    say_cmd("cd 4_Deploy/42_Benchmark_Report && " + cmd)
+    cmd_list = [sys.executable, "generate_benchmark_report.py"]
+    code, out = run_subprocess(cmd_list, STAGE42_DIR, stdin_text="\n")
+    show_output(out, label="generate_benchmark_report.py console output")
+    if code != 0:
+        fail("stage 4.2 report generator exited with code {}".format(code))
+        results.append(("stage4.2 report exit 0", False))
+    else:
+        ok("stage 4.2 report generator completed")
+        results.append(("stage4.2 report exit 0", True))
+
+    assert_exists(os.path.join(report_out, "benchmark_report.md"), results)
     pause(interactive)
 
 
@@ -1578,7 +1611,7 @@ def main():
             + C.CYAN + "    2  Data Processing   " + C.END + "– curate, split (train/test), augment\n"
             + C.CYAN + "    3.1 Surrogate Training" + C.END + "– build & calibrate the grid surrogate\n"
             + C.CYAN + "    3.2 Surrogate Testing " + C.END + "– coupled, time-marching validation\n"
-            + C.CYAN + "    4  Port to MOOSE     " + C.END + "– export a C++ material model\n"
+            + C.CYAN + "    4  Deploy           " + C.END + "– export a C++ material model & benchmark report\n"
             + C.CYAN + "    5  Clean Pipeline    " + C.END + "– preview a repo clean-up (dry-run)\n"
             "\n"
             "  Tips:\n"

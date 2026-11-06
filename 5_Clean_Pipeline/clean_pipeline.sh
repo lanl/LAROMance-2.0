@@ -25,7 +25,7 @@
 #   • Deletes everything inside any `output` or `references` directory of the
 #     four main stages (1‑4), except files named CONTEXT.md, README.md or
 #     .gitignore.
-#   • In `4_Port_MOOSE/41_Export_Model/references` it removes only `*.pickle`
+#   • In `4_Deploy/41_Export_MOOSE/references` it removes only `*.pickle`
 #     files; *.i files and the `base` sub‑directory are kept.
 #   • Does **not** touch the `utils`, `examples`, or top‑level documentation
 #     files.
@@ -92,15 +92,15 @@ log "Starting pipeline clean-up"
 # Each stage may contain nested sub‑folders that also have their own `output`
 # or `references` directories (e.g., 3_Surrogate_Modeling/31_Surrogate_Training/output).
 # We locate all such directories recursively and clean them.
-for stage in 1_Data_Generation 2_Data_Processing 3_Surrogate_Modeling 4_Port_MOOSE; do
+for stage in 1_Data_Generation 2_Data_Processing 3_Surrogate_Modeling 4_Deploy; do
     find "${REPO_ROOT}/${stage}" -type d \( -name output -o -name references \) -print0 |
         while IFS= read -r -d '' dir; do
             clean_generic_dir "$dir"
         done
 done
 
-# Special handling for the Export_Model references folder
-export_ref_dir="${REPO_ROOT}/4_Port_MOOSE/41_Export_Model/references"
+# Special handling for the Export_MOOSE references folder
+export_ref_dir="${REPO_ROOT}/4_Deploy/41_Export_MOOSE/references"
 if [[ -d "$export_ref_dir" ]]; then
     log "Cleaning *.pickle files in $export_ref_dir"
     find "$export_ref_dir" -type f -name "*.pickle" -print0 |

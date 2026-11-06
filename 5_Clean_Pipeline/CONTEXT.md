@@ -2,13 +2,13 @@
 
 ## Purpose
 
-After you have completed the full surrogate‑building workflow (up to **4.2 Analyze Benchmark Test**) you may want to **archive** the entire repository – keeping the results, configuration files and documentation – and then **restart** the pipeline from scratch on new data.  The *Clean Pipeline* step removes all automatically generated artefacts (`output` and `references` folders) while **preserving**:
+After you have completed the full surrogate‑building workflow (up to **4.2 Benchmark Report**) you may want to **archive** the entire repository – keeping the results, configuration files and documentation – and then **restart** the pipeline from scratch on new data.  The *Clean Pipeline* step removes all automatically generated artefacts (`output` and `references` folders) while **preserving**:
 
 * `utils/` and `examples/` directories (they contain reusable scripts and example data)
 * documentation files (`CONTEXT.md`, `README.md`, `.gitignore`, `.gitkeep`)
-* In `4_Port_MOOSE/41_Export_Model/references` only `*.pickle` files are deleted; `*.i` files and the `base` sub‑directory are kept because they are required for later MOOSE runs.
+* In `4_Deploy/41_Export_MOOSE/references` only `*.pickle` files are deleted; `*.i` files and the `base` sub‑directory are kept because they are required for later MOOSE runs.
 
-The step is implemented as a small Bash script (`clean_pipeline.sh`).  It can be run **manually** or **automatically** as the final optional step of stage **4.2 Analyze Benchmark Test**.
+The step is implemented as a small Bash script (`clean_pipeline.sh`).  It can be run **manually** or **automatically** as the final optional step of stage **4.2 Benchmark Report**.
 
 ## How to run
 
@@ -23,7 +23,7 @@ The script is safe to execute on a **copied** version of the repository (e.g., a
 
 ## Optional integration with stage 4.2
 
-If you prefer a completely automated workflow, add the following line to the end of the Python/command sequence that finishes **4.2 Analyze Benchmark Test**:
+If you prefer a completely automated workflow, add the following line to the end of the Python/command sequence that finishes **4.2 Benchmark Report**:
 
 ```bash
 # After user confirms the surrogate is approved

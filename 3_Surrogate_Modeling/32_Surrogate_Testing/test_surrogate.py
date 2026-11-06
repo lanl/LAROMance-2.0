@@ -23,6 +23,8 @@ import itertools
 sys.path.append(os.path.abspath(os.path.join(__file__, '..', '..', '..')))
 from utils import sm_build as smb
 from utils import sm_plot as smp
+from utils import sm_analyze as sma
+from utils import sm_report as smr
 
 # ----------------------------------------------------------------------
 # Command‑line interface
@@ -220,6 +222,48 @@ def run_testing(forced_outputs):
     print(f"\nCoupled validation completed. Plotting all outputs: {keys_to_plot}")
     print("\nx in error map: {} with array length {}".format(x_key, len(DATA['data'][list(DATA['data'].keys())[0]][x_key])))
     print("y in error map: {} with array length {}".format(y_key, len(DATA['data'][list(DATA['data'].keys())[0]][y_key])))
+
+    # ------------------------------------------------------------------
+    # Benchmark logging: only the fully-coupled run represents the model
+    # ------------------------------------------------------------------
+    if not forced_outputs:
+        try:
+            import numpy as _np
+            _walltime = test_results.get('validation_walltime_s')
+            _total_inc = test_results.get('total_increments')
+            _rel_rmse_per_output = {}
+            for z_key in keys_to_plot:
+                try:
+                    _ei = sma.errorinc(test_results, x=x_key, y=y_key, z=z_key)
+                    _vals = _np.ma.compressed(_ei['REL_RMSE'])
+                    if _vals.size:
+                        _rel_rmse_per_output[z_key] = {
+                            "mean": float(_np.mean(_vals)),
+                            "median": float(_np.median(_vals)),
+                            "max": float(_np.max(_vals)),
+                        }
+                except Exception as _ei_exc:
+                    print(f"[benchmark] WARNING: REL_RMSE for '{z_key}' skipped: {_ei_exc}")
+            _test_metrics = {
+                "test_data_file": os.path.basename(data_filename),
+                "is_mlp": bool(is_mlp),
+                "num_test_simulations": len(DATA['data']),
+                "testing_metrics": {
+                    "relative_rmse_per_output": _rel_rmse_per_output,
+                    "total_wall_time_s": (float(_walltime) if _walltime is not None else None),
+                    "total_increments": _total_inc,
+                    "wall_time_per_increment_s": (
+                        float(_walltime) / _total_inc
+                        if (_walltime is not None and _total_inc) else None
+                    ),
+                },
+            }
+            smr.log_stage_metrics(
+                smr.STAGE_TESTING, _test_metrics,
+                output_dir=run_args['output_directory'],
+            )
+        except Exception as _exc:
+            print(f"[benchmark] WARNING: testing metric logging skipped: {_exc}")
 
     for z_key in keys_to_plot:
         print(f"\nGenerating plot for output '{key}' (forced set: {sorted(forced_outputs)})")

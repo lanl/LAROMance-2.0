@@ -48,6 +48,7 @@ from utils import fe_shapes as fes
 from utils import sm_analyze as sma
 from utils import sm_data as smd
 from utils import sm_plot as smp
+from utils import sm_report as smr
 
 # ============================================================
 # Shared helper: pretty R² report (used by both grid and neural paths)
@@ -218,6 +219,43 @@ def mlp_train(roi, mesh_specs, args, DATA):
 
     # Pretty report (unified with grid path)
     _print_r2_report(r2_scaled, title="Training fit quality (Neural)")
+
+    # ----------------------------------------------------------------------
+    # Benchmark logging: neural (MLP / PointNet / MoE) training metadata
+    # ----------------------------------------------------------------------
+    try:
+        _settings = {
+            "epochs": epochs,
+            "hidden_size": hidden,
+            "batch_size": batch_size,
+            "learning_rate": lr,
+            "num_parameters": int(sum(p.numel() for p in model.parameters())),
+            "device": str(device),
+        }
+        if "moe" in model_name:
+            _settings["num_experts"] = num_experts
+            _settings["top_k"] = top_k
+        _scalers = {}
+        for _k in (args.get('map_input') or {}):
+            _scalers[_k] = {"role": "input", "map": args['map_input'][_k]}
+        for _k in (args.get('map_output') or {}):
+            _scalers[_k] = {"role": "output", "map": args['map_output'][_k]}
+        _nn_metrics = {
+            "model_architecture": model_name,
+            "data_file": args.get('data_file'),
+            "model_settings": _settings,
+            "scalers_and_ranges": _scalers,
+            "training_metrics": {
+                "r2_scaled": {k: float(v) for k, v in r2_scaled.items()},
+            },
+            "data_stats": {"total_training_points": int(X.shape[0])},
+        }
+        smr.log_stage_metrics(
+            smr.STAGE_TRAINING, _nn_metrics,
+            output_dir=args.get('output_directory') or output_dir or "./output",
+        )
+    except Exception as _exc:
+        print(f"[benchmark] WARNING: neural training metric logging skipped: {_exc}")
 
     print("\n" + "="*60)
     print("MLP TRAINING COMPLETE")
@@ -568,6 +606,7 @@ def sm_train(roi: dict, mesh_specs: dict, args : dict, DATA : dict = None, data_
 
     end = time.time()
     print("\nGlobal interpolation matrix constructed (in {:4.2f} s).".format(end-start))
+    _interp_matrix_walltime = end - start
     sys.stdout.flush()
 
     # print size of sparse interpolation matrix and check nans and inf
@@ -725,6 +764,7 @@ def sm_train(roi: dict, mesh_specs: dict, args : dict, DATA : dict = None, data_
 
     end = time.time()
     print(f"Completed linear regression (in {end-start:4.2f} s).")
+    _regression_walltime = end - start
     sys.stdout.flush()
 
     # Compute condition number
@@ -739,6 +779,54 @@ def sm_train(roi: dict, mesh_specs: dict, args : dict, DATA : dict = None, data_
     r2_report["M_condition"] = condM
     _print_r2_report(r2_report, title="Training fit quality (Grid)")
     sys.stdout.flush()
+
+    # ----------------------------------------------------------------------
+    # Benchmark logging: persist training metadata, architecture & metrics
+    # ----------------------------------------------------------------------
+    try:
+        _elem_numbers = mesh_specs.get('element_numbers', {})
+        _tri_elements = mesh_specs.get('tri_elements', [])
+        _element_type = "triangular (simplex)" if _tri_elements else "cubic (hypercube)"
+        _scalers = {}
+        for _k in (args.get('map_input') or {}):
+            _scalers[_k] = {"role": "input", "map": args['map_input'][_k]}
+        for _k in (args.get('map_output') or {}):
+            _scalers[_k] = {"role": "output", "map": args['map_output'][_k]}
+        _train_metrics = {
+            "model_architecture": "grid",
+            "data_file": args.get('data_file'),
+            "model_settings": {
+                "element_type": _element_type,
+                "element_numbers": _elem_numbers,
+                "num_mesh_elements": int(conn.shape[0]),
+                "num_mesh_nodes": int(nodes.shape[0]),
+                "sparse": args.get('sparse'),
+            },
+            "roi": {k: list(v) for k, v in roi.items()},
+            "scalers_and_ranges": _scalers,
+            "training_metrics": {
+                "r2": {k: float(v) for k, v in r2.items()},
+                "M_condition": float(condM),
+            },
+            "walltimes_s": {
+                "interp_matrix": float(_interp_matrix_walltime),
+                "regression": float(_regression_walltime),
+            },
+        }
+        if 'meta_data' in DATA:
+            _lengths = DATA['meta_data']['sim_lengths']
+            _train_metrics["data_stats"] = {
+                "num_simulations": len(_lengths),
+                "total_data_points": int(sum(_lengths)),
+                "avg_increments_per_simulation": float(np.mean(_lengths)),
+                "max_increments_per_simulation": int(np.max(_lengths)),
+            }
+        smr.log_stage_metrics(
+            smr.STAGE_TRAINING, _train_metrics,
+            output_dir=args.get('output_directory') or "./output",
+        )
+    except Exception as _exc:
+        print(f"[benchmark] WARNING: training metric logging skipped: {_exc}")
 
     ## ===================================
     # RESTRUCTURE DATA
@@ -859,11 +947,21 @@ def sm_test(SM: dict, args : dict, DATA : dict = None, data_files_common_name : 
 
     end = time.time()
     print("\nValidation time: {:4.2f}".format(end-start))
+    _validation_walltime = end - start
 
     # add the output do a dict
     valid_output = {}
     valid_output['valid'] = valid
     valid_output['data'] = data
+    valid_output['validation_walltime_s'] = _validation_walltime
+    # Total number of time increments evaluated across all validated simulations
+    try:
+        valid_output['total_increments'] = int(sum(
+            len(valid[sim]['t']) if 't' in valid[sim] else len(valid[sim]['dt'])
+            for sim in valid
+        ))
+    except Exception:
+        valid_output['total_increments'] = None
 
 
     ## =============================

@@ -91,6 +91,12 @@ def augment_piecewise_data(
     new_data: Dict[int, Dict[str, Any]] = {}
     new_sim_lengths: List[int] = []
     augmentation_counts: Dict[int, int] = {}
+    orig_lengths: List[int] = []
+    # Per anchor-interval accumulators (one slot per [node_i, node_{i+1}] interval):
+    #   points in the AUGMENTED grid, and points in the ORIGINAL grid.
+    n_intervals = len(np.asarray(nodes, dtype=float)) - 1
+    interval_aug_counts = np.zeros(n_intervals, dtype=float)
+    interval_orig_counts = np.zeros(n_intervals, dtype=float)
 
     nodes_arr = np.asarray(nodes, dtype=float)
     if nodes_arr.size < 2:
@@ -282,7 +288,20 @@ def augment_piecewise_data(
         orig_len = len(evm_orig)
         aug_len = len(evm_aug)
         new_sim_lengths.append(aug_len)
+        orig_lengths.append(orig_len)
         augmentation_counts[sim_id] = aug_len - orig_len
+
+        # Tally how many points fall in each anchor interval, before and after
+        # augmentation. Points are binned by the left-closed interval they land
+        # in; values on/above the last node go in the final interval.
+        if n_intervals > 0:
+            bins = np.clip(np.searchsorted(nodes_arr, evm_aug, side="right") - 1,
+                           0, n_intervals - 1)
+            interval_aug_counts += np.bincount(bins, minlength=n_intervals)
+            obins = np.clip(np.searchsorted(nodes_arr, evm_orig, side="right") - 1,
+                            0, n_intervals - 1)
+            interval_orig_counts += np.bincount(obins, minlength=n_intervals)
+
         print(
             f"  Original: {orig_len} → Augmented: {aug_len} "
             f"(+{augmentation_counts[sim_id]})  "
@@ -294,6 +313,44 @@ def augment_piecewise_data(
     # ----------------------------------------------------------------------
     meta_data["sim_lengths"] = new_sim_lengths
     meta_data["augmentation_counts"] = augmentation_counts
+
+    # ------------------------------------------------------------------
+    # Augmentation summary (overall + per anchor-interval)
+    # ------------------------------------------------------------------
+    total_orig = int(sum(orig_lengths))
+    total_aug = int(sum(new_sim_lengths))
+    added_counts = list(augmentation_counts.values())
+    per_interval = []
+    for i in range(n_intervals):
+        per_interval.append({
+            "interval": [float(nodes_arr[i]), float(nodes_arr[i + 1])],
+            "points_original": int(interval_orig_counts[i]),
+            "points_augmented": int(interval_aug_counts[i]),
+            "points_added": int(interval_aug_counts[i] - interval_orig_counts[i]),
+        })
+    aug_summary = {
+        "anchor_nodes": [float(v) for v in nodes_arr],
+        "num_simulations": total_sims,
+        "total_points_original": total_orig,
+        "total_points_augmented": total_aug,
+        "total_points_added": total_aug - total_orig,
+        "avg_points_added_per_sim": (float(np.mean(added_counts)) if added_counts else 0.0),
+        "max_points_added_per_sim": (int(np.max(added_counts)) if added_counts else 0),
+        "per_interval": per_interval,
+    }
+    meta_data["augmentation_summary"] = aug_summary
+
+    # Console report of the augmentation summary
+    print("\n===== Data augmentation summary =====")
+    print(f"  Simulations augmented      : {total_sims}")
+    print(f"  Total points  {total_orig} -> {total_aug} (+{total_aug - total_orig})")
+    print(f"  Avg points added per sim   : {aug_summary['avg_points_added_per_sim']:.1f} "
+          f"(max {aug_summary['max_points_added_per_sim']})")
+    print("  Points added per anchor interval:")
+    for iv in per_interval:
+        lo, hi = iv["interval"]
+        print(f"    [{lo:.3g}, {hi:.3g}] : {iv['points_original']} -> "
+              f"{iv['points_augmented']} (+{iv['points_added']})")
 
     return {"data": new_data, "meta_data": meta_data}
 

@@ -10,7 +10,7 @@ table.
 The script **port_surrogate_to_moose.py** can be executed from the command line:
 
 ```bash
-cd ../4_Port_MOOSE/41_Export_Model/
+cd ../4_Deploy/41_Export_MOOSE/
 python port_surrogate_to_moose.py [model_name]
 ```
 

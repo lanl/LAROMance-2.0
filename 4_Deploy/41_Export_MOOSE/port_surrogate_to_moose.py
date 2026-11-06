@@ -31,6 +31,7 @@ import pickle, os, copy,  sys
 sys.path.append(os.path.abspath(os.path.join(__file__, '..', '..', '..')))
 from utils import sm_plot as smp
 from utils import sm_publish as smpub
+from utils import sm_report as smr
 
 # --------------------------------------
 # Load the surrogate model
@@ -76,6 +77,13 @@ if is_mlp:
     # Use generic verification table generation; number of inputs can be any size.
     csv_data = smpub.generate_verification_table(SM, num_inputs = 1000,
                                              output_directory='./output', output_filename=filename)
+
+    smr.log_stage_metrics(smr.STAGE_PORT_MOOSE, {
+        "model_name": model_name,
+        "model_architecture": SM.get("training_method", "mlp"),
+        "ported_files": [f"{model_name}.C", f"{model_name}.h", f"{model_name}.pt"],
+        "verification_table": filename,
+    }, output_dir="./output")
 
     sys.exit(0)
     
@@ -123,3 +131,14 @@ filename = "benchmarks.csv"
 # Use generic verification table generation; number of inputs can be any size.
 csv_data = smpub.generate_verification_table(SM, num_inputs = 1000,
                                              output_directory='./output', output_filename=filename)
+
+# -------------------------------------------------------------------
+# Benchmark logging: record the ported MOOSE artefacts for the report
+# -------------------------------------------------------------------
+smr.log_stage_metrics(smr.STAGE_PORT_MOOSE, {
+    "model_name": model_name,
+    "model_architecture": SM.get("training_method", "grid"),
+    "ported_files": [f"{model_name}.C", f"{model_name}.h", "SM.pickle", "mesh_visualization.png"],
+    "verification_table": filename,
+}, output_dir="./output")
+
