@@ -737,7 +737,7 @@ def sm_train(roi: dict, mesh_specs: dict, args : dict, DATA : dict = None, data_
     # Print R² for each output key (using unified helper)
     r2_report = dict(r2)
     r2_report["M_condition"] = condM
-    _print_r2_report(r2_report, title="Training fit quality")
+    _print_r2_report(r2_report, title="Training fit quality (Grid)")
     sys.stdout.flush()
 
     ## ===================================
