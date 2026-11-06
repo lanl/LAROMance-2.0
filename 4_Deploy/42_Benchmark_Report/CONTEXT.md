@@ -29,22 +29,20 @@ report to `./output/benchmark_report.md`.
 
 ### What the report contains
 
-- **Data statistics** — source file(s), number of simulations, total data
-  points, average and max increments per simulation, train/test split.
-- **Metadata** — inputs/outputs, their scalers (minmax / log10 / compress /
-  symlog), the scaler ranges/settings, and the region of interest (ROI).
-- **Model architecture** — `grid`, `mlp`, `pointnet`, or `moe`.
-- **Model settings** — for *grid*: element numbers across input variables and
-  element type (triangular/simplex vs. cubic/hypercube), mesh element & node
-  counts; for *mlp*: epochs, hidden size, parameter count; for *moe*: number of
-  experts and top-k.
-- **Training metrics** — R² per output and the stiffness-matrix condition
-  number, plus interpolation-matrix and regression wall-times.
-- **Testing metrics** — relative-RMSE (mean / median / max) per modelled
-  output, total testing wall-time, and wall-time **per increment** (the cost of
-  a single surrogate evaluation).
-- **Ported MOOSE files** — model name and the generated `.C`/`.h`/`.pt` and
-  verification-table filenames.
+The report is a **single vertical two-column table** (`Metric | Value`), with
+bold full-width rows acting as group dividers so the whole surrogate is
+overviewable at once. Colored metrics flag quality inline. The groups are:
+
+- **DATA** — train/test simulations, data points, increments/sim (avg · max),
+  input/output variables, and (if used) the points added by augmentation
+  (total · average per simulation).
+- **TRAINING** — R² per output (colored), condition number, and the
+  interp-matrix & regression wall-times.
+- **TESTING** — relative-RMSE per output as mean · median · max (mean colored),
+  total testing wall-time, and wall-time **per increment** (single-evaluation cost).
+- **MODEL & DEPLOYMENT** — architecture (`grid`/`mlp`/`pointnet`/`moe`) and its
+  settings (grid: element numbers/type & mesh counts; mlp: epochs/hidden/params;
+  moe: experts/top-k), plus the ported MOOSE `.C`/`.h`/`.pt` and verification files.
 
 ### Color coding
 

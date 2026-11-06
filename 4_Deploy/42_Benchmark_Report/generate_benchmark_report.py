@@ -133,205 +133,109 @@ def _rated(value, rating, fmt="{:.4f}"):
 # ----------------------------------------------------------------------
 # Markdown section builders
 # ----------------------------------------------------------------------
-def section_data_stats(md, stages):
-    data = stages.get(smr.STAGE_DATA_PROCESSING)
-    md.append("## 1. Data Statistics\n")
-    if not data:
-        md.append("_No data-processing benchmark found._\n")
-        return
-    src_files = data.get('source_files', [])
-    src_full = [_stage_file(data, "references", f) for f in src_files]
-    md.append(f"- **Source file(s):** {', '.join('`%s`' % p for p in src_full) if src_full else '_n/a_'}")
-    md.append(f"- **Simulations loaded:** {_fmt(data.get('num_simulations_loaded'))}")
-    md.append(f"- **Input variables:** {', '.join(data.get('input_variables', [])) or '_n/a_'}")
-    md.append(f"- **Output variables:** {', '.join(data.get('output_variables', [])) or '_n/a_'}")
-    if "split_pct_train" in data:
-        md.append(f"- **Train/Test split:** {_fmt(data.get('split_pct_train'))}% train")
-    md.append("")
-    md.append("| Partition | # Simulations | Total data points | Avg increments/sim | Max increments/sim |")
-    md.append("|-----------|--------------:|------------------:|-------------------:|-------------------:|")
-    for part in ("train", "test"):
-        p = data.get(part)
-        if not p:
-            continue
-        md.append("| {} | {} | {} | {} | {} |".format(
-            part.capitalize(),
-            _fmt(p.get("num_simulations")),
-            _fmt(p.get("total_data_points"), "{:,}"),
-            _fmt(p.get("avg_increments_per_simulation"), "{:.1f}"),
-            _fmt(p.get("max_increments_per_simulation")),
-        ))
-    md.append("")
-
-    # Optional data-augmentation sub-section
-    aug = data.get("augmentation")
-    if aug:
-        md.append("### Data Augmentation (anchor-point interpolation)\n")
-        md.append(f"- **Anchor nodes:** {', '.join(_fmt(n, '{:g}') for n in aug.get('anchor_nodes', []))}")
-        md.append(f"- **Simulations augmented:** {_fmt(aug.get('num_simulations'))}")
-        md.append("- **Total points:** {} → {} (**+{}** added)".format(
-            _fmt(aug.get("total_points_original"), "{:,}"),
-            _fmt(aug.get("total_points_augmented"), "{:,}"),
-            _fmt(aug.get("total_points_added"), "{:,}"),
-        ))
-        md.append("- **Points added per simulation:** {} avg (max {})".format(
-            _fmt(aug.get("avg_points_added_per_sim"), "{:.1f}"),
-            _fmt(aug.get("max_points_added_per_sim")),
-        ))
-        per_iv = aug.get("per_interval", [])
-        if per_iv:
-            md.append("")
-            md.append("| Anchor interval | Points (orig) | Points (augmented) | Points added |")
-            md.append("|-----------------|--------------:|-------------------:|-------------:|")
-            for iv in per_iv:
-                lo, hi = iv.get("interval", [None, None])
-                md.append("| [{:g}, {:g}] | {} | {} | +{} |".format(
-                    lo, hi,
-                    _fmt(iv.get("points_original"), "{:,}"),
-                    _fmt(iv.get("points_augmented"), "{:,}"),
-                    _fmt(iv.get("points_added"), "{:,}"),
-                ))
-        md.append("")
+def _group(md, title):
+    """Emit a bold full-width group-divider row inside the single metrics table."""
+    md.append(f"| **{title}** | |")
 
 
-def section_metadata(md, stages):
-    train = stages.get(smr.STAGE_TRAINING)
-    md.append("## 2. Metadata: Inputs/Outputs, Scalers & Ranges\n")
-    if not train:
-        md.append("_No training benchmark found._\n")
-        return
-    roi = train.get("roi", {})
-    scalers = train.get("scalers_and_ranges", {})
-    md.append("| Variable | Role | Scaler/Map | Range / Settings | ROI |")
-    md.append("|----------|------|-----------|------------------|-----|")
-    for var, info in scalers.items():
-        role = info.get("role", "")
-        mp = info.get("map", {})
-        if isinstance(mp, dict) and mp:
-            scaler_name = ", ".join(mp.keys())
-            settings = "; ".join(f"{k}={v}" for k, v in mp.items())
-        else:
-            scaler_name = str(mp)
-            settings = ""
-        roi_str = _fmt(roi.get(var))
-        md.append(f"| `{var}` | {role} | {scaler_name} | {settings} | {roi_str} |")
-    md.append("")
-
-
-def section_architecture(md, stages):
-    train = stages.get(smr.STAGE_TRAINING)
-    md.append("## 3. Model Architecture & Settings\n")
-    if not train:
-        md.append("_No training benchmark found._\n")
-        return
-    arch = train.get("model_architecture", "unknown")
-    md.append(f"- **Architecture:** `{arch}`")
-    md.append(f"- **Training data file:** `{_fmt(_abspath(train.get('data_file')))}`")
-    settings = train.get("model_settings", {})
-    if settings:
-        md.append("")
-        md.append("| Setting | Value |")
-        md.append("|---------|-------|")
-        for k, v in settings.items():
-            md.append(f"| {k} | {_fmt(v)} |")
-    md.append("")
-
-
-def section_training_metrics(md, stages):
-    train = stages.get(smr.STAGE_TRAINING)
-    md.append("## 4. Training Metrics\n")
-    if not train:
-        md.append("_No training benchmark found._\n")
-        return
-    tm = train.get("training_metrics", {})
-    r2 = tm.get("r2") or tm.get("r2_scaled") or {}
-    if r2:
-        md.append("| Output | R² |")
-        md.append("|--------|---:|")
-        for k, v in r2.items():
-            rating = smr.r2_rating(v)
-            md.append(f"| `{k}` | {_rated(v, rating, '{:.4f}')} |")
-        md.append("")
-        md.append(f'_Colour key: <span style="color:{_HEX["good"]}">R²≥{smr.R2_GOOD}</span> · '
-                  f'<span style="color:{_HEX["ok"]}">≥{smr.R2_OK}</span> · '
-                  f'<span style="color:{_HEX["bad"]}">&lt;{smr.R2_OK}</span>_\n')
-    if "M_condition" in tm:
-        md.append(f"- **Condition number (M):** {_fmt(tm.get('M_condition'), '{:.2f}')}")
-    wt = train.get("walltimes_s", {})
-    for label, key in (("Interpolation matrix build", "interp_matrix"),
-                       ("Linear regression", "regression")):
-        if key in wt:
-            md.append(f"- **{label} wall-time:** {_fmt(wt.get(key), '{:.2f}')} s")
-    md.append("")
-
-
-
-def section_testing_metrics(md, stages):
-    test = stages.get(smr.STAGE_TESTING)
-    md.append("## 5. Testing Metrics\n")
-    if not test:
-        md.append("_No testing benchmark found._\n")
-        return
-    md.append(f"- **Test data file:** `{_fmt(_stage_file(test, 'references', test.get('test_data_file')))}`")
-    md.append(f"- **Test simulations:** {_fmt(test.get('num_test_simulations'))}")
-    tm = test.get("testing_metrics", {})
-    rr = tm.get("relative_rmse_per_output", {})
-    if rr:
-        md.append("")
-        md.append("| Output | Mean rel-RMSE | Median | Max |")
-        md.append("|--------|--------------:|-------:|----:|")
-        for k, v in rr.items():
-            rating = smr.relrmse_rating(v.get("mean"))
-            md.append("| `{}` | {} | {} | {} |".format(
-                k,
-                _rated(v.get("mean"), rating, "{:.4f}"),
-                _fmt(v.get("median"), "{:.4f}"),
-                _fmt(v.get("max"), "{:.4f}"),
-            ))
-        md.append("")
-        md.append(f'_Colour key (on mean): <span style="color:{_HEX["good"]}">rel-RMSE≤{smr.RELRMSE_GOOD}</span> · '
-                  f'<span style="color:{_HEX["ok"]}">≤{smr.RELRMSE_OK}</span> · '
-                  f'<span style="color:{_HEX["bad"]}">&gt;{smr.RELRMSE_OK}</span>_\n')
-    md.append(f"- **Total testing wall-time:** {_fmt(tm.get('total_wall_time_s'), '{:.2f}')} s")
-    md.append(f"- **Total increments evaluated:** {_fmt(tm.get('total_increments'), '{:,}')}")
-    wpi = tm.get("wall_time_per_increment_s")
-    if wpi is not None:
-        md.append(f"- **Wall-time per increment (single eval):** {wpi*1e3:.4f} ms")
-    md.append("")
-
-
-def section_moose(md, stages):
-    port = stages.get(smr.STAGE_PORT_MOOSE)
-    md.append("## 6. Ported MOOSE Files\n")
-    if not port:
-        md.append("_No MOOSE-port benchmark found._\n")
-        return
-    md.append(f"- **Model name:** `{_fmt(port.get('model_name'))}`")
-    md.append(f"- **Architecture:** `{_fmt(port.get('model_architecture'))}`")
-    files = port.get("ported_files", [])
-    if files:
-        md.append("- **Ported files:**")
-        for f in files:
-            md.append(f"  - `{_stage_file(port, 'output', f)}`")
-    md.append(f"- **Verification table:** `{_fmt(_stage_file(port, 'output', port.get('verification_table')))}`")
-    md.append("")
+def _row(md, label, value):
+    md.append(f"| {label} | {value} |")
 
 
 def build_markdown(stages):
-    md = ["# LAROMance Pipeline - Benchmark Report\n"]
-    md.append(f"_Generated: {datetime.datetime.now().isoformat(timespec='seconds')}_\n")
-    found = [smr.STAGE_TITLES.get(k, k) for k in stages]
-    md.append(f"_Stages found: {', '.join(found) if found else 'none'}_\n")
-    md.append("---\n")
-    section_data_stats(md, stages)
-    section_metadata(md, stages)
-    section_architecture(md, stages)
-    section_training_metrics(md, stages)
-    section_testing_metrics(md, stages)
-    section_moose(md, stages)
-    md.append("---\n")
-    md.append("_Report assembled by `generate_benchmark_report.py` from per-stage "
-              "`benchmark_*.json` artefacts._")
+    data = stages.get(smr.STAGE_DATA_PROCESSING) or {}
+    train = stages.get(smr.STAGE_TRAINING) or {}
+    test = stages.get(smr.STAGE_TESTING) or {}
+    port = stages.get(smr.STAGE_PORT_MOOSE) or {}
+
+    md = ["# LAROMance Benchmark Report"]
+    md.append(f"_{datetime.datetime.now().isoformat(timespec='seconds')}_\n")
+    md.append("| Metric | Value |")
+    md.append("|:--|:--|")
+
+    # ---- Data -------------------------------------------------------------
+    _group(md, "DATA")
+    if data:
+        for part in ("train", "test"):
+            p = data.get(part)
+            if not p:
+                continue
+            _row(md, f"{part} · simulations", _fmt(p.get("num_simulations")))
+            _row(md, f"{part} · data points", _fmt(p.get("total_data_points"), "{:,}"))
+            _row(md, f"{part} · increments/sim (avg · max)",
+                 f"{_fmt(p.get('avg_increments_per_simulation'), '{:.0f}')} · "
+                 f"{_fmt(p.get('max_increments_per_simulation'))}")
+        _row(md, "inputs", ", ".join(data.get("input_variables", [])) or "—")
+        _row(md, "outputs", ", ".join(data.get("output_variables", [])) or "—")
+        aug = data.get("augmentation")
+        if aug:
+            _row(md, "augmentation · +pts (total · avg/sim)",
+                 "{} · {}".format(
+                     _fmt(aug.get("total_points_added"), "{:,}"),
+                     _fmt(aug.get("avg_points_added_per_sim"), "{:.0f}")))
+    else:
+        _row(md, "_missing_", "")
+
+    # ---- Training ---------------------------------------------------------
+    _group(md, "TRAINING")
+    if train:
+        tm = train.get("training_metrics", {})
+        r2 = tm.get("r2") or tm.get("r2_scaled") or {}
+        for k, v in r2.items():
+            _row(md, f"R² · `{k}`", _rated(v, smr.r2_rating(v), "{:.4f}"))
+        if "M_condition" in tm:
+            _row(md, "condition number (M)", _fmt(tm.get("M_condition"), "{:.1f}"))
+        wt = train.get("walltimes_s", {})
+        if "interp_matrix" in wt:
+            _row(md, "wall-time · interp-matrix", f"{wt['interp_matrix']:.2f} s")
+        if "regression" in wt:
+            _row(md, "wall-time · regression", f"{wt['regression']:.2f} s")
+    else:
+        _row(md, "_missing_", "")
+
+    # ---- Testing ----------------------------------------------------------
+    _group(md, "TESTING")
+    if test:
+        tm = test.get("testing_metrics", {})
+        rr = tm.get("relative_rmse_per_output", {})
+        for k, v in rr.items():
+            _row(md, f"rel-RMSE · `{k}` (mean · median · max)",
+                 "{} · {} · {}".format(
+                     _rated(v.get("mean"), smr.relrmse_rating(v.get("mean")), "{:.4f}"),
+                     _fmt(v.get("median"), "{:.4f}"),
+                     _fmt(v.get("max"), "{:.4f}")))
+        if tm.get("total_wall_time_s") is not None:
+            _row(md, "wall-time · total", f"{tm['total_wall_time_s']:.2f} s")
+        wpi = tm.get("wall_time_per_increment_s")
+        if wpi is not None:
+            _row(md, "wall-time · per increment", f"{wpi*1e3:.3f} ms")
+    else:
+        _row(md, "_missing_", "")
+
+    # ---- Model & Deployment ----------------------------------------------
+    _group(md, "MODEL & DEPLOYMENT")
+    if train or port:
+        if train:
+            _row(md, "architecture", f"`{train.get('model_architecture', '?')}`")
+            for k, v in train.get("model_settings", {}).items():
+                _row(md, k, _fmt(v))
+        if port:
+            _row(md, "model name", f"`{_fmt(port.get('model_name'))}`")
+            for f in port.get("ported_files", []):
+                _row(md, "ported file", f"`{_stage_file(port, 'output', f)}`")
+            vt = _stage_file(port, "output", port.get("verification_table"))
+            if vt:
+                _row(md, "verification table", f"`{vt}`")
+    else:
+        _row(md, "_missing_", "")
+
+    md.append("")
+    md.append(f'_Colour key — R²: <span style="color:{_HEX["good"]}">≥{smr.R2_GOOD}</span> '
+              f'<span style="color:{_HEX["ok"]}">≥{smr.R2_OK}</span> '
+              f'<span style="color:{_HEX["bad"]}">&lt;{smr.R2_OK}</span> · '
+              f'rel-RMSE: <span style="color:{_HEX["good"]}">≤{smr.RELRMSE_GOOD}</span> '
+              f'<span style="color:{_HEX["ok"]}">≤{smr.RELRMSE_OK}</span> '
+              f'<span style="color:{_HEX["bad"]}">&gt;{smr.RELRMSE_OK}</span>_')
     return "\n".join(md)
 
 
