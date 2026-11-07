@@ -134,6 +134,36 @@ class MoERegressor(nn.Module):
             for _ in range(num_experts)
         ])
 
+    def _gate_weights(self, x):
+        """Compute the post-top-k, renormalized gating weights for inputs ``x``.
+
+        Shared by ``forward`` (for the weighted expert combination) and by
+        ``gating`` (for inspection / plotting). ``x`` is expected flattened to
+        [N, input_dim]. Returns [N, num_experts]."""
+        gate_logits = self.gate(x)                       # [N, num_experts]
+        gate_weights = torch.softmax(gate_logits, dim=-1)
+
+        # Sparse top-k routing (renormalized over the selected experts)
+        topk_vals, topk_idx = torch.topk(gate_weights, self.top_k, dim=-1)
+        mask = torch.zeros_like(gate_weights).scatter_(-1, topk_idx, 1.0)
+        gate_weights = gate_weights * mask
+        gate_weights = gate_weights / (gate_weights.sum(dim=-1, keepdim=True) + 1e-8)
+        return gate_weights
+
+    @torch.no_grad()
+    def gating(self, x):
+        """Return the (post-top-k, renormalized) gating weights without running
+        the experts. Mirrors ``forward``'s input handling so the returned
+        weights line up with the input points.
+
+        Returns a tensor of shape [N, num_experts] (tabular input) or
+        [B, N, num_experts] (point-cloud input)."""
+        if x.dim() == 3:
+            B, N, D = x.shape
+            w = self._gate_weights(x.view(B * N, D))
+            return w.view(B, N, -1)
+        return self._gate_weights(x)
+
     def forward(self, x):
         # Handle both [B, D] and [B, N, D] if needed
         if x.dim() == 3:
@@ -143,15 +173,8 @@ class MoERegressor(nn.Module):
         else:
             reshape = False
 
-        # Gate scores
-        gate_logits = self.gate(x)               # [B, num_experts]
-        gate_weights = torch.softmax(gate_logits, dim=-1)
-
-        # Sparse top-k (optional; remove for dense MoE)
-        topk_vals, topk_idx = torch.topk(gate_weights, self.top_k, dim=-1)
-        mask = torch.zeros_like(gate_weights).scatter_(-1, topk_idx, 1.0)
-        gate_weights = gate_weights * mask
-        gate_weights = gate_weights / (gate_weights.sum(dim=-1, keepdim=True) + 1e-8)
+        # Gate scores (post-top-k, renormalized)
+        gate_weights = self._gate_weights(x)
 
         # Weighted combination of experts
         out = torch.zeros(x.size(0), self.experts[0].net[-1].out_features,

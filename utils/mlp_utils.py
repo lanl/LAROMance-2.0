@@ -79,6 +79,51 @@ def collate_fn(batch):
     return torch.stack(xs), torch.stack(ys)
 
 
+def compute_gate_activity(model, X_scaled):
+    """Compute per-point expert gating activity for a Mixture-of-Experts model.
+
+    Parameters
+    ----------
+    model : torch.nn.Module
+        A trained model. Only models exposing a ``gating`` method (i.e.
+        ``MoERegressor``) produce output; anything else returns ``None``.
+    X_scaled : np.ndarray, shape (N, n_inputs)
+        The SCALED inputs (same scaling used for inference), one row per point.
+
+    Returns
+    -------
+    dict or None
+        ``{"weights": (N, E) float array, "argmax": (N,) int array,
+           "num_experts": E, "top_k": k}`` for an MoE model, else ``None``.
+    """
+    if not hasattr(model, "gating"):
+        return None
+    try:
+        model_eval = model.eval()
+        with torch.no_grad():
+            x = torch.tensor(np.asarray(X_scaled, dtype=np.float64), dtype=torch.float64)
+            # Match the model's working dtype/device
+            try:
+                p = next(model_eval.parameters())
+                x = x.to(dtype=p.dtype, device=p.device)
+            except StopIteration:
+                pass
+            weights = model_eval.gating(x).cpu().numpy()
+    except Exception as exc:  # never break plotting because of gating
+        print(f"[compute_gate_activity] WARNING: gating failed: {exc}")
+        return None
+
+    weights = np.asarray(weights)
+    if weights.ndim != 2:
+        weights = weights.reshape(-1, weights.shape[-1])
+    return {
+        "weights": weights,
+        "argmax": weights.argmax(axis=1).astype(int),
+        "num_experts": int(getattr(model, "num_experts", weights.shape[1])),
+        "top_k": int(getattr(model, "top_k", 1)),
+    }
+
+
 # # Helper function for gating networks (MoE)
 # def load_balance_loss(gate_weights):
 #     # Encourage uniform expert usage

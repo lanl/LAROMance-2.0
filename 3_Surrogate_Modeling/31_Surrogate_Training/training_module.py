@@ -166,10 +166,16 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
         self.toggle_nodes.setChecked(True)
         self.toggle_nodes.stateChanged.connect(self.update_result_plot)
 
+        # MoE-only: overlay dominant-expert regions on the relative-error map.
+        self.toggle_expert_overlay = QtWidgets.QCheckBox("Show Expert Regions (MoE)")
+        self.toggle_expert_overlay.setChecked(False)
+        self.toggle_expert_overlay.stateChanged.connect(self.update_result_plot)
+
         self.result_options_layout.addWidget(self.toggle_data_points)
         self.result_options_layout.addWidget(self.toggle_trisurf)
         self.result_options_layout.addWidget(self.toggle_mapped_output_in_plots)
         self.result_options_layout.addWidget(self.toggle_nodes)
+        self.result_options_layout.addWidget(self.toggle_expert_overlay)
         self.result_tab_layout.addLayout(self.result_options_layout)
 
         # --- Colormap Selector ---
@@ -3717,6 +3723,125 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
         print("Warning: fewer than 2 Plot-selected inputs; using fallback variables.")
         return fallback[0], fallback[1]
     
+    def _overlay_expert_regions(self, ax, SM, DATA2, var1, var2, resolution=400):
+        """Overlay MoE dominant-expert regions on the relative-error map.
+        Tints the (var1, var2) input space with a translucent, discrete colour
+        per dominant (argmax) expert -- the MoE analogue of the grid mesh overlay.
+        Each grid cell takes the expert of its nearest sample (nearest-neighbour
+        classification), so class labels are never interpolated and only experts
+        that actually win somewhere are drawn. Solid boundary lines separate the
+        regions, and a discrete legend lists the active experts.
+        Fail-safe: any problem is caught so the result plot still renders.
+        """
+        try:
+            import matplotlib.pyplot as _plt
+            import matplotlib.colors as _mcolors
+            from matplotlib.patches import Patch
+            from scipy.spatial import cKDTree
+
+            gating = getattr(self, "_moe_gating", None) or SM.get("moe_gating")
+            if not gating:
+                print("Expert overlay skipped: no gating activity available.")
+                return
+
+            argmax = np.asarray(gating["argmax"]).ravel()
+            num_experts = int(gating.get("num_experts", int(argmax.max()) + 1))
+            x1 = np.asarray(DATA2["data"][var1], dtype=float).ravel()
+            x2 = np.asarray(DATA2["data"][var2], dtype=float).ravel()
+            n = min(len(x1), len(x2), len(argmax))
+            if n == 0:
+                return
+            x1, x2, argmax = x1[:n], x2[:n], argmax[:n].astype(int)
+
+            # Drop non-finite samples
+            ok = np.isfinite(x1) & np.isfinite(x2)
+            x1, x2, argmax = x1[ok], x2[ok], argmax[ok]
+            if len(x1) == 0:
+                return
+
+            # Discrete qualitative colours, one per expert
+            base = _plt.get_cmap("tab10" if num_experts <= 10 else "tab20")
+            colors = [base(e % base.N) for e in range(num_experts)]
+            listed = _mcolors.ListedColormap(colors)
+            # Boundaries so each integer expert id maps to exactly one colour band
+            norm = _mcolors.BoundaryNorm(np.arange(-0.5, num_experts, 1.0), listed.N)
+
+            used = sorted(set(int(e) for e in np.unique(argmax)))
+
+            tinted = False
+            try:
+                # Work in the axes' display scaling (log axes -> log space)
+                xlog = ax.get_xscale() == "log"
+                ylog = ax.get_yscale() == "log"
+                if xlog or ylog:
+                    pos = np.ones_like(x1, dtype=bool)
+                    if xlog:
+                        pos &= x1 > 0
+                    if ylog:
+                        pos &= x2 > 0
+                    x1, x2, argmax = x1[pos], x2[pos], argmax[pos]
+                t1 = np.log10(x1) if xlog else x1
+                t2 = np.log10(x2) if ylog else x2
+
+                lo1, hi1 = t1.min(), t1.max()
+                lo2, hi2 = t2.min(), t2.max()
+                s1 = (hi1 - lo1) or 1.0
+                s2 = (hi2 - lo2) or 1.0
+
+                # Regular grid in (possibly log-transformed) space
+                gx = np.linspace(lo1, hi1, resolution)
+                gy = np.linspace(lo2, hi2, resolution)
+                GX, GY = np.meshgrid(gx, gy)
+
+                # Normalise axes so the nearest-neighbour search isn't dominated
+                # by whichever variable has the larger numeric range
+                tree = cKDTree(np.column_stack([(t1 - lo1) / s1, (t2 - lo2) / s2]))
+                _, idx = tree.query(
+                    np.column_stack([((GX - lo1) / s1).ravel(),
+                                    ((GY - lo2) / s2).ravel()])
+                )
+                Z = argmax[idx].reshape(GX.shape).astype(float)
+
+                # Back to data coordinates for plotting
+                PX = 10.0 ** GX if xlog else GX
+                PY = 10.0 ** GY if ylog else GY
+
+                # Translucent filled tint: which expert owns each region
+                ax.pcolormesh(PX, PY, Z, cmap=listed, norm=norm,
+                            shading="nearest", alpha=0.8, zorder=9)
+
+                # Solid boundaries only between regions that really exist
+                if len(used) >= 2:
+                    for e in used[:-1]:
+                        mask = (Z > e).astype(float)
+                        if mask.min() == mask.max():
+                            continue
+                        ax.contour(PX, PY, mask, levels=[0.5],
+                                colors="white", linewidths=1.2, zorder=11)
+                tinted = True
+            except (RuntimeError, ValueError) as exc:
+                print(f"Expert region computation failed ({exc}).")
+
+            if not tinted:
+                print("Result plotting: Expert region overlay failed.")
+
+            # Discrete legend: colour -> expert id (only experts that are active)
+            handles = [
+                Patch(facecolor=colors[e % len(colors)], edgecolor="k",
+                    alpha=1.0, label=f"expert {e}")
+                for e in used
+            ]
+            if handles:
+                leg = ax.legend(handles=handles, title="dominant expert",
+                                loc="upper right", fontsize=11, framealpha=1.0)
+                if leg is not None:
+                    leg.set_zorder(20)  # above tint (9) and boundaries (11)
+                    leg.get_title().set_fontsize(11)
+        except Exception as exc:  # never break the result plot
+            print(f"Expert overlay skipped: {exc}")
+
+
+    
     def update_result_plot(self, SM=None, DATA2=None, u_physical=None, u_mapped=None,
                        uh_physical=None, uh_mapped=None, outvar=None,
                        input_vars=None, rel_err=None):
@@ -3887,6 +4012,16 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
                 ax1.set_ylabel(var2)
             else:
                 print("Mesh overlay skipped: plotted variables are not the mesh base dimensions.")
+
+        # ------------------------------------------------------------------
+        # MoE: overlay dominant-expert regions (the MoE analogue of the grid
+        # mesh overlay above). Shows which expert governs each part of the
+        # (var1, var2) input space on top of the relative-error map.
+        # ------------------------------------------------------------------
+        is_moe = is_neural and ("moe" in str(SM.get("mlp_model_type", "")).lower())
+        if is_moe and getattr(self, "toggle_expert_overlay", None) is not None \
+                and self.toggle_expert_overlay.isChecked():
+            self._overlay_expert_regions(ax1, SM, DATA2, var1, var2)
 
         self.data_canvas_2d = FigureCanvas(fig1)
         self.setup_interactive_labels(fig1)
@@ -4097,6 +4232,14 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
             X_tensor = torch.tensor(X_scaled, dtype=torch.float64)
             y_pred = trained_model(X_tensor).cpu().numpy()
 
+        # === Capture MoE expert gating activity (None for non-MoE models) ===
+        try:
+            from utils.mlp_utils import compute_gate_activity
+            self._moe_gating = compute_gate_activity(trained_model, X_scaled)
+        except Exception as _gexc:
+            print(f"[MoE gating] capture skipped: {_gexc}")
+            self._moe_gating = None
+
         outputs = {}
         for j, var in enumerate(output_vars):
             uh_mapped = y_pred[:, j]
@@ -4219,6 +4362,21 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
             )
             self.DATA2 = new_data
             self.input_vars = input_vars
+
+            # Persist MoE gating activity into SM (small arrays) and re-save, so
+            # the expert-region overlay survives a reload.
+            if getattr(self, "_moe_gating", None) is not None:
+                self.SM["moe_gating"] = {
+                    "argmax": self._moe_gating["argmax"],
+                    "weights": self._moe_gating["weights"],
+                    "num_experts": self._moe_gating["num_experts"],
+                    "top_k": self._moe_gating["top_k"],
+                }
+                try:
+                    with open("./output/SM.pickle", "wb") as f:
+                        pickle.dump(self.SM, f)
+                except Exception as _sexc:
+                    print(f"[MoE gating] SM re-save skipped: {_sexc}")
 
             # Pick first checked output (or first available) and plot
             selected_output = None

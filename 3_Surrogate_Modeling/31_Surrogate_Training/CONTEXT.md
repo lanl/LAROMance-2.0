@@ -75,6 +75,30 @@ The user reviews the existence of the `SM.pickle` in the `output` folder and mov
 
 ---
 
+## Results Plotting Options 
+
+### Mesh-overlay on results plots
+For the grid-based approach, the relative error color map is overlayed by the grid-points and mesh connectivity (simplex/hypercube).
+
+### MoE expert-region overlay on the result plots
+
+When a **MoE (Mixture of Experts)** model is trained, the Training Result plot
+tab overlays the **dominant-expert regions** on the relative-error map — the MoE
+analogue of the grid-based mesh overlay (where the grid method draws the finite-
+element mesh over the same map). This shows *which expert governs each part of
+the plotted 2-D input space*: white contour lines mark the boundaries between
+regions where different experts dominate, and a discrete legend maps colours to
+expert IDs (only experts that are actually active are listed). If the region
+geometry cannot be contoured, it falls back to colouring each data point's
+outline by its dominant expert. The overlay can be toggled on/off with the
+**"Show Expert Regions (MoE)"** checkbox in the result-plot options (on by
+default; it only has an effect for MoE models).
+
+The gating weights are exposed by `MoERegressor.gating(x)` in
+`utils/mlp_models.py` (the post-top-k, renormalized weights used internally by
+`forward`), summarised per point by `compute_gate_activity(model, X_scaled)` in
+`utils/mlp_utils.py`, and stored under `SM["moe_gating"]`.
+
 ## Developer Notes on MLP Architecture Extension
 The **MLP-based architectures** coded in this workflow are exemplary, experimental, and intentionally relatively simple in order to facilitate a range of use cases out-of-the-box. They offer an alternative to the more targeted and custom-coded **grid-based** surrogate architecture. Whereas the latter was originally designed for data with a unidirectional character (e.g., thermo-mechanical creep deformation under constant unidirectional loading), the MLP architectures may represent "spiky" data (many peaks and valleys that change direction quickly) more easily, yet are here only provided in an "exploratory", yet generic format. The MLP-code utilized standard functions from the PyTorch library, which makes extension and customization directly accessible to the user. 
 
