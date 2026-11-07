@@ -8,8 +8,6 @@ report** that summarises every stage of the workflow.
 
 ## Part A - Generate the Benchmark Report (automated)
 
-### What it is
-
 Throughout stages **2 → 4** each script already prints its stats and metrics to
 the console. At those same locations the scripts now *also* append a small,
 per-stage JSON file via the shared helper `utils/sm_report.py`
