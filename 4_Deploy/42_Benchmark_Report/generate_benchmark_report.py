@@ -29,22 +29,28 @@ whole LAROMance pipeline. It globs every stage's ``output`` folder for the
     * Model architecture (grid / mlp / pointnet / moe) and its settings
     * Training metrics (R2, condition number, wall-times)
     * Testing metrics (relative RMSE per output, total + per-increment wall-time)
+    * Code-to-code comparison (MOOSE surrogate vs. Python reference), read from
+      the last row of a .csv in the ``references`` folder (if present)
     * Ported MOOSE file names
 
-Metrics are color-rated green/yellow/red via emoji badges (GitHub-safe) with
-the same thresholds used elsewhere in the codebase (R2 >=.99 green, >=.95
-yellow, else red).
+Metrics are color-rated green/yellow/red via colored text with the same
+thresholds used elsewhere in the codebase (R2 >=.99 green, >=.95 yellow, else
+red). Code-to-code max relative differences use: < 1e-12 green,
+1e-12 .. 1e-10 yellow, > 1e-10 red.
 
 Usage (from this directory):
     python generate_benchmark_report.py
     python generate_benchmark_report.py --repo-root /path/to/LAROMance_process \
-                                        --output benchmark_report.md
+                                        --output benchmark_report.md \
+                                        --references-dir ./references
 """
 
 import os
 import sys
+import csv
 import glob
 import json
+import math
 import argparse
 import datetime
 
@@ -56,6 +62,27 @@ _GREEN, _YEL, _RED, _BOLD, _END = "\033[92m", "\033[93m", "\033[91m", "\033[1m",
 _ANSI = {"good": _GREEN, "ok": _YEL, "bad": _RED, "unknown": ""}
 # Hex colors used for inline-HTML colored text in the Markdown report.
 _HEX = {"good": "#2ca02c", "ok": "#e6a700", "bad": "#d62728", "unknown": "#808080"}
+
+# Code-to-code (MOOSE vs Python) max-relative-difference thresholds.
+C2C_GOOD = 1e-12   # below this -> green
+C2C_OK = 1e-10     # between C2C_GOOD and C2C_OK -> yellow; above -> red
+
+
+def c2c_rating(value):
+    """Rate a code-to-code max relative difference (smaller is better)."""
+    if value is None:
+        return "unknown"
+    try:
+        v = abs(float(value))
+    except (TypeError, ValueError):
+        return "unknown"
+    if math.isnan(v):
+        return "unknown"
+    if v < C2C_GOOD:
+        return "good"
+    if v <= C2C_OK:
+        return "ok"
+    return "bad"
 
 
 def find_benchmark_jsons(repo_root):
@@ -91,6 +118,102 @@ def find_benchmark_jsons(repo_root):
             found[key] = data
             found_mtime[key] = mtime
     return found
+
+
+# ----------------------------------------------------------------------
+# Code-to-code comparison (MOOSE vs Python) from references/*.csv
+# ----------------------------------------------------------------------
+def _to_float(s):
+    try:
+        return float(str(s).strip())
+    except (TypeError, ValueError):
+        return None
+
+
+def _locate_references_dir(user_dir=None):
+    """Find the ``references`` folder: explicit arg, else ./references (cwd),
+    else <script dir>/references. Returns None if it does not exist."""
+    candidates = []
+    if user_dir:
+        candidates.append(user_dir)
+    candidates.append(os.path.join(os.getcwd(), "references"))
+    candidates.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), "references"))
+    for c in candidates:
+        if os.path.isdir(c):
+            return os.path.abspath(c)
+    return None
+
+
+def _expected_num_outputs(stages):
+    """Number of output variables, from the data stage (fallback: testing stage)."""
+    data = stages.get(smr.STAGE_DATA_PROCESSING) or {}
+    outs = data.get("output_variables")
+    if outs:
+        return len(outs)
+    test = stages.get(smr.STAGE_TESTING) or {}
+    rr = test.get("testing_metrics", {}).get("relative_rmse_per_output", {})
+    return len(rr) if rr else None
+
+
+def read_reference_comparison(stages, references_dir=None):
+    """Read the last row of the .csv in ``references`` and return the values of
+    the last N columns (N = number of outputs).
+
+    Returns ``None`` if the folder / csv is missing or unusable, otherwise
+    ``{"file": abs_path, "values": [(column_name, float_or_None), ...]}``."""
+    ref_dir = _locate_references_dir(references_dir)
+    if ref_dir is None:
+        print("[report] No 'references' folder found; skipping code-to-code comparison.")
+        return None
+
+    csvs = sorted(glob.glob(os.path.join(ref_dir, "verification_out.csv")))
+    if not csvs:
+        print(f"[report] No .csv file in {ref_dir}; skipping code-to-code comparison.")
+        return None
+    if len(csvs) > 1:
+        csvs.sort(key=os.path.getmtime)
+        print(f"[report] WARNING: multiple .csv files in {ref_dir}; "
+              f"using newest ({os.path.basename(csvs[-1])}).")
+    path = csvs[-1]
+
+    n_out = _expected_num_outputs(stages)
+    if not n_out:
+        print("[report] WARNING: could not determine number of outputs; "
+              "skipping code-to-code comparison.")
+        return None
+
+    try:
+        with open(path, "r", newline="") as fh:
+            rows = [r for r in csv.reader(fh) if any(c.strip() for c in r)]
+    except Exception as exc:
+        print(f"[report] WARNING: could not read {path}: {exc}")
+        return None
+    if not rows:
+        print(f"[report] WARNING: {path} is empty; skipping code-to-code comparison.")
+        return None
+
+    # First row is a header if any of its cells is non-numeric.
+    has_header = any(_to_float(c) is None for c in rows[0] if c.strip())
+    header = [c.strip() for c in rows[0]] if has_header else None
+    data_rows = rows[1:] if has_header else rows
+    if not data_rows:
+        print(f"[report] WARNING: {path} has a header but no data rows; skipping.")
+        return None
+
+    last = [c.strip() for c in data_rows[-1]]
+    if n_out > len(last):
+        print(f"[report] WARNING: csv has only {len(last)} columns but {n_out} outputs "
+              f"expected; using {len(last)}.")
+        n_out = len(last)
+
+    tail = last[-n_out:]
+    if header and len(header) == len(last):
+        names = header[-n_out:]
+    else:
+        names = [f"output_{i + 1}" for i in range(n_out)]
+
+    return {"file": path,
+            "values": [(n, _to_float(v)) for n, v in zip(names, tail)]}
 
 
 def _abspath(path):
@@ -142,7 +265,7 @@ def _row(md, label, value):
     md.append(f"| {label} | {value} |")
 
 
-def build_markdown(stages):
+def build_markdown(stages, c2c=None):
     data = stages.get(smr.STAGE_DATA_PROCESSING) or {}
     train = stages.get(smr.STAGE_TRAINING) or {}
     test = stages.get(smr.STAGE_TESTING) or {}
@@ -208,6 +331,14 @@ def build_markdown(stages):
     else:
         _row(md, "_missing_", "")
 
+    # ---- Code-to-code (MOOSE vs Python) -----------------------------------
+    if c2c:
+        _group(md, "CODE-TO-CODE (MOOSE vs Python)")
+        for name, val in c2c["values"]:
+            _row(md, f"max rel. diff · `{name}`",
+                 _rated(val, c2c_rating(val), "{:.3e}"))
+        _row(md, "reference file", f"`{c2c['file']}`")
+
     # ---- Model & Deployment ----------------------------------------------
     _group(md, "MODEL & DEPLOYMENT")
     if train or port:
@@ -226,16 +357,22 @@ def build_markdown(stages):
         _row(md, "_missing_", "")
 
     md.append("")
-    md.append(f'_color key — R²: <span style="color:{_HEX["good"]}">≥{smr.R2_GOOD}</span> '
-              f'<span style="color:{_HEX["ok"]}">≥{smr.R2_OK}</span> '
-              f'<span style="color:{_HEX["bad"]}">&lt;{smr.R2_OK}</span> · '
-              f'rel-RMSE: <span style="color:{_HEX["good"]}">≤{smr.RELRMSE_GOOD}</span> '
-              f'<span style="color:{_HEX["ok"]}">≤{smr.RELRMSE_OK}</span> '
-              f'<span style="color:{_HEX["bad"]}">&gt;{smr.RELRMSE_OK}</span>_')
+    key = (f'_color key — R²: <span style="color:{_HEX["good"]}">≥{smr.R2_GOOD}</span> '
+           f'<span style="color:{_HEX["ok"]}">≥{smr.R2_OK}</span> '
+           f'<span style="color:{_HEX["bad"]}">&lt;{smr.R2_OK}</span> · '
+           f'rel-RMSE: <span style="color:{_HEX["good"]}">≤{smr.RELRMSE_GOOD}</span> '
+           f'<span style="color:{_HEX["ok"]}">≤{smr.RELRMSE_OK}</span> '
+           f'<span style="color:{_HEX["bad"]}">&gt;{smr.RELRMSE_OK}</span>')
+    if c2c:
+        key += (f' · code-to-code: <span style="color:{_HEX["good"]}">&lt;{C2C_GOOD:.0e}</span> '
+                f'<span style="color:{_HEX["ok"]}">{C2C_GOOD:.0e}–{C2C_OK:.0e}</span> '
+                f'<span style="color:{_HEX["bad"]}">&gt;{C2C_OK:.0e}</span>')
+    key += "_"
+    md.append(key)
     return "\n".join(md)
 
 
-def print_console_summary(stages):
+def print_console_summary(stages, c2c=None):
     print(f"\n{_BOLD}===== Benchmark summary ====={_END}")
     train = stages.get(smr.STAGE_TRAINING)
     if train:
@@ -250,6 +387,11 @@ def print_console_summary(stages):
         for k, v in rr.items():
             rating = smr.relrmse_rating(v.get("mean"))
             print(f"\trel-RMSE {k}: {_ANSI.get(rating,'')}{v.get('mean'):.4f}{_END}")
+    if c2c:
+        for name, val in c2c["values"]:
+            rating = c2c_rating(val)
+            txt = f"{val:.3e}" if val is not None else "n/a"
+            print(f"\tcode-to-code max rel. diff {name}: {_ANSI.get(rating,'')}{txt}{_END}")
 
 
 def main():
@@ -259,6 +401,9 @@ def main():
                     help="Repository root to glob for benchmark_*.json (default: auto).")
     ap.add_argument("--output", default="./output/benchmark_report.md",
                     help="Markdown output path (default: ./output/benchmark_report.md).")
+    ap.add_argument("--references-dir", default=None,
+                    help="Folder holding the MOOSE-vs-Python comparison .csv "
+                         "(default: ./references, then <script dir>/references).")
     args = ap.parse_args()
 
     stages = find_benchmark_jsons(args.repo_root)
@@ -267,16 +412,17 @@ def main():
         print("[report] Run the pipeline stages first (they log metrics automatically).")
         return 1
 
-    markdown = build_markdown(stages)
+    c2c = read_reference_comparison(stages, args.references_dir)
+
+    markdown = build_markdown(stages, c2c)
     out_path = os.path.abspath(args.output)
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
     with open(out_path, "w") as fh:
         fh.write(markdown)
     print(f"[report] Benchmark report written to: {out_path}")
-    print_console_summary(stages)
+    print_console_summary(stages, c2c)
     return 0
 
 
 if __name__ == "__main__":
     sys.exit(main())
-
