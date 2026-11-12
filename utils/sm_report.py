@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 © 2026. Triad National Security, LLC. All rights reserved.
@@ -37,6 +36,7 @@ Design goals:
 import os
 import json
 import datetime
+import numpy as np
 
 # Canonical stage keys used in the benchmark JSON filenames / report sections.
 STAGE_DATA_PROCESSING = "2_data_processing"
@@ -58,6 +58,11 @@ R2_OK = 0.95        # yellow at/above this, red below
 # Relative-RMSE thresholds (fraction, e.g. 0.05 == 5 %).
 RELRMSE_GOOD = 0.05
 RELRMSE_OK = 0.10
+
+# Bootstrap CI width thresholds (on the same scale as relative RMSE).
+# Narrow CI = low uncertainty in the error estimate → good.
+BOOTSTRAP_WIDTH_GOOD = 0.01
+BOOTSTRAP_WIDTH_OK = 0.03
 
 
 def _json_safe(obj):
@@ -169,3 +174,127 @@ def relrmse_rating(value):
     if v <= RELRMSE_OK:
         return "ok"
     return "bad"
+
+
+def bootstrap_width_rating(ci_low, ci_high):
+    """Return ('good'|'ok'|'bad') for bootstrap CI width (narrower = better)."""
+    try:
+        width = abs(float(ci_high) - float(ci_low))
+    except (TypeError, ValueError):
+        return "unknown"
+    if width <= BOOTSTRAP_WIDTH_GOOD:
+        return "good"
+    if width <= BOOTSTRAP_WIDTH_OK:
+        return "ok"
+    return "bad"
+
+# NEW for bootstrapping for test result benchmarking
+def bootstrap_metric(y_true, y_pred, metric_fn, n_boot=1000, confidence=0.95, seed=42):
+    """
+    Bootstrap confidence interval for a metric that depends on y_true and y_pred.
+
+    Parameters
+    ----------
+    y_true, y_pred : array-like, shape (N,)
+        Ground truth and predictions on the test set.
+    metric_fn : callable
+        Function with signature metric_fn(y_true, y_pred) -> float.
+        Examples: r2_score, relative_rmse.
+    n_boot : int
+        Number of bootstrap resamples.
+    confidence : float
+        Confidence level (e.g. 0.95).
+    seed : int
+        Random seed for reproducibility.
+
+    Returns
+    -------
+    dict with keys:
+        point : float          # metric on the original data
+        ci_low : float         # lower percentile
+        ci_high : float        # upper percentile
+        mean : float           # mean of bootstrap distribution
+        std : float            # std of bootstrap distribution
+    """
+    y_true = np.asarray(y_true).ravel()
+    y_pred = np.asarray(y_pred).ravel()
+    assert len(y_true) == len(y_pred), "y_true and y_pred must have the same length"
+    rng = np.random.default_rng(seed)
+    n = len(y_true)
+    point = float(metric_fn(y_true, y_pred))
+
+    boot_stats = np.empty(n_boot)
+    for i in range(n_boot):
+        idx = rng.integers(0, n, size=n)
+    boot_stats[i] = metric_fn(y_true[idx], y_pred[idx])
+
+    alpha = (1.0 - confidence) / 2.0
+    ci_low = float(np.percentile(boot_stats, 100 * alpha))
+    ci_high = float(np.percentile(boot_stats, 100 * (1.0 - alpha)))
+
+    return {
+        "point": point,
+        "ci_low": ci_low,
+        "ci_high": ci_high,
+        "mean": float(np.mean(boot_stats)),
+        "std": float(np.std(boot_stats)),
+        "n_boot": n_boot,
+        "confidence": confidence,
+    }
+
+
+def relative_rmse(y_true, y_pred):
+    """Relative RMSE (fraction)."""
+    y_true = np.asarray(y_true).ravel()
+    y_pred = np.asarray(y_pred).ravel()
+    rmse = np.sqrt(np.mean((y_true - y_pred) ** 2))
+    denom = np.mean(np.abs(y_true)) + 1e-12
+    return rmse / denom
+
+
+def r2_score(y_true, y_pred):
+    """Coefficient of determination."""
+    y_true = np.asarray(y_true).ravel()
+    y_pred = np.asarray(y_pred).ravel()
+    ss_res = np.sum((y_true - y_pred) ** 2)
+    ss_tot = np.sum((y_true - np.mean(y_true)) ** 2) + 1e-12
+    return 1.0 - ss_res / ss_tot
+
+
+def bootstrap_relrmse_from_errorinc(errorinc_dict, z_key, n_boot=1000, confidence=0.95, seed=42):
+    """Run bootstrap on the per-increment relative RMSE values already computed
+    by sma.errorinc for a given output z_key.
+
+    Returns the same dict shape as bootstrap_metric.
+    """
+    try:
+        ei = errorinc_dict
+        rel_vals = np.ma.compressed(ei['REL_RMSE'])
+        # Use the per-increment relative errors as the population to resample
+        # (this approximates the distribution of the mean rel-RMSE).
+        def _mean_abs(x):
+            return float(np.mean(np.abs(x)))
+
+        # We treat the already-computed per-increment rel-rmse values as observations
+        point = float(np.mean(rel_vals))
+        rng = np.random.default_rng(seed)
+        n = len(rel_vals)
+        boot_stats = np.empty(n_boot)
+        for i in range(n_boot):
+            idx = rng.integers(0, n, size=n)
+            boot_stats[i] = _mean_abs(rel_vals[idx])
+
+        alpha = (1.0 - confidence) / 2.0
+        ci_low = float(np.percentile(boot_stats, 100 * alpha))
+        ci_high = float(np.percentile(boot_stats, 100 * (1.0 - alpha)))
+        return {
+            "point": point,
+            "ci_low": ci_low,
+            "ci_high": ci_high,
+            "mean": float(np.mean(boot_stats)),
+            "std": float(np.std(boot_stats)),
+            "n_boot": n_boot,
+            "confidence": confidence,
+        }
+    except Exception:
+        return None

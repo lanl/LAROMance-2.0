@@ -237,10 +237,17 @@ def run_testing(forced_outputs):
                     _ei = sma.errorinc(test_results, x=x_key, y=y_key, z=z_key)
                     _vals = _np.ma.compressed(_ei['REL_RMSE'])
                     if _vals.size:
-                        _rel_rmse_per_output[z_key] = {
+                        boot = smr.bootstrap_relrmse_from_errorinc(
+                            {"REL_RMSE": _ei['REL_RMSE']}, z_key,
+                            n_boot=1000, confidence=0.95, seed=42
+                        )
+                        entry = {
                             "mean": float(_np.mean(_vals)),
                             "std": float(_np.std(_vals)),
                         }
+                        if boot:
+                            entry["bootstrap"] = boot
+                        _rel_rmse_per_output[z_key] = entry
                 except Exception as _ei_exc:
                     print(f"[benchmark] WARNING: REL_RMSE for '{z_key}' skipped: {_ei_exc}")
             _test_metrics = {
@@ -257,6 +264,7 @@ def run_testing(forced_outputs):
                     ),
                 },
             }
+            
             smr.log_stage_metrics(
                 smr.STAGE_TESTING, _test_metrics,
                 output_dir=run_args['output_directory'],

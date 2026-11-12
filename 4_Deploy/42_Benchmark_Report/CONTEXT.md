@@ -37,6 +37,14 @@ overviewable at once. Colored metrics flag quality inline. The groups are:
 - **TRAINING** — R² per output (colored) and condition number.
 - **TESTING** — relative-RMSE per output as mean · std (mean colored), and the
   testing wall-time as total · per increment (single-evaluation cost).
+  When bootstrapping is enabled (stage 3.2), each output also shows a
+  **bootstrap 95 % CI** row. This interval is obtained by repeatedly
+  resampling the per-increment relative-RMSE values with replacement (1000
+  times) and taking the 2.5 % / 97.5 % percentiles of the resulting
+  distribution. The **mean** of the bootstrap distribution is the usual point
+  estimate; the **CI** gives a non-parametric measure of uncertainty around
+  that estimate. A narrow CI indicates the observed error is stable across
+  resamples; a wide CI signals higher variability in the test-set errors.
 - **MODEL & DEPLOYMENT** — architecture (`grid`/`mlp`/`pointnet`/`moe`) and its
   settings (grid: element numbers/type & mesh counts; mlp: epochs/hidden/params;
   moe: experts/top-k), plus the ported MOOSE `.C`/`.h`/`.pt` and verification files.
@@ -54,65 +62,10 @@ The thresholds live in `utils/sm_report.py` (`R2_GOOD`, `R2_OK`,
 `RELRMSE_GOOD`, `RELRMSE_OK`) — adjust them there if your tolerances differ.
 
 ### How to run
-
 ```bash
-cd 4_Deploy/42_Benchmark_Report
-conda activate laromance          # if applicable
 python generate_benchmark_report.py
 ```
 
-Useful flags:
-
-```bash
-# Point at a different repository root to scan
-python generate_benchmark_report.py --repo-root /path/to/LAROMance_process
-
-# Write the report somewhere else
-python generate_benchmark_report.py --output ./output/my_report.md
-```
-
-The generator is **fail-safe**: if a stage's JSON is missing it simply notes
-that section as "not found" rather than erroring, so you can produce a partial
-report at any point in the workflow.
-
-> **Note:** the per-stage JSON files live in each stage's `output/` folder, so a
-> full run of `5_Clean_Pipeline/clean_pipeline.sh` removes them along with the
-> other generated artefacts. Generate (or copy out) the report before cleaning.
-
----
-
-## Part B - Visualise the MOOSE benchmark output (manual)
-
-After the surrogate has been exported to a MOOSE material (step 4.1) the user
-runs the verification simulations and then examines the results. The utility
-functions in `utils/sm_analyze.py` can be used to visualise the benchmark
-output. A typical call looks like:
-
-```python
-import os
-from utils import sm_analyze as sma
-
-output_directory = "./output"
-filepath = os.path.join(output_directory, "verification_cube_out.csv")
-
-# Produce a 3-D plot of the rate difference (example variable name)
-sma.moose_verification(
-    filepath=filepath,
-    x='vmJ2',
-    y='temperature',
-    z='rhom_rate_diff'
-)
-```
-
-Replace the column names (`vmJ2`, `temperature`, `rhom_rate_diff`) with the
-appropriate fields from your CSV. The function will generate the requested
-visualisation in the `output` folder.
-
----
-
-## Congratulations!
-You have completed the workflow and should now have a verified surrogate plus a
-full benchmark report.
+Congratulations! You have completed a surrogate model build!
 
 *There is no constitutive law. Bend the code.*
-

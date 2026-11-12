@@ -317,10 +317,18 @@ def build_markdown(stages, c2c=None):
         tm = test.get("testing_metrics", {})
         rr = tm.get("relative_rmse_per_output", {})
         for k, v in rr.items():
+            mean_val = v.get("mean") if isinstance(v, dict) else v
+            std_val = v.get("std") if isinstance(v, dict) else None
             _row(md, f"rel-RMSE · `{k}` (mean · std)",
                  "{} · {}".format(
-                     _rated(v.get("mean"), smr.relrmse_rating(v.get("mean")), "{:.4f}"),
-                     _fmt(v.get("std"), "{:.4f}")))
+                     _rated(mean_val, smr.relrmse_rating(mean_val), "{:.4f}"),
+                     _fmt(std_val, "{:.4f}")))
+            boot = v.get("bootstrap") if isinstance(v, dict) else None
+            if boot:
+                ci_str = "[{:.4f}, {:.4f}]".format(boot.get("ci_low"), boot.get("ci_high"))
+                width_rating = smr.bootstrap_width_rating(boot.get("ci_low"), boot.get("ci_high"))
+                _row(md, f"&nbsp;&nbsp;bootstrap 95% CI", _rated(ci_str, width_rating, "{}"))
+        
         total = tm.get("total_wall_time_s")
         wpi = tm.get("wall_time_per_increment_s")
         if total is not None or wpi is not None:
@@ -367,6 +375,9 @@ def build_markdown(stages, c2c=None):
         key += (f' · code-to-code: <span style="color:{_HEX["good"]}">&lt;{C2C_GOOD:.0e}</span> '
                 f'<span style="color:{_HEX["ok"]}">{C2C_GOOD:.0e}–{C2C_OK:.0e}</span> '
                 f'<span style="color:{_HEX["bad"]}">&gt;{C2C_OK:.0e}</span>')
+    key += (f' · bootstrap CI width: <span style="color:{_HEX["good"]}">≤{smr.BOOTSTRAP_WIDTH_GOOD}</span> '
+            f'<span style="color:{_HEX["ok"]}">≤{smr.BOOTSTRAP_WIDTH_OK}</span> '
+            f'<span style="color:{_HEX["bad"]}">&gt;{smr.BOOTSTRAP_WIDTH_OK}</span>')
     key += "_"
     md.append(key)
     return "\n".join(md)
@@ -385,8 +396,16 @@ def print_console_summary(stages, c2c=None):
     if test:
         rr = test.get("testing_metrics", {}).get("relative_rmse_per_output", {})
         for k, v in rr.items():
-            rating = smr.relrmse_rating(v.get("mean"))
-            print(f"\trel-RMSE {k}: {_ANSI.get(rating,'')}{v.get('mean'):.4f}{_END}")
+            if isinstance(v, dict):
+                mean_val = v.get("mean")
+                boot = v.get("bootstrap")
+            else:
+                mean_val = v
+                boot = None
+            rating = smr.relrmse_rating(mean_val)
+            print(f"\trel-RMSE {k}: {_ANSI.get(rating,'')}{mean_val:.4f}{_END}")
+            if boot:
+                print(f"\t    bootstrap 95% CI: [{boot.get('ci_low'):.4f}, {boot.get('ci_high'):.4f}]")
     if c2c:
         for name, val in c2c["values"]:
             rating = c2c_rating(val)
