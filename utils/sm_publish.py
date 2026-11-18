@@ -1381,7 +1381,7 @@ def write_moose_C(SM: dict, name: str):
     for key in MOOSE_input_keys:
         if 'Compress' in str(SM['input_maps'][key]):
             input_scalers.append("{{\"COMPRESS\", typename LAesStressUpdateBaseNewTempl<is_ad>::CompressTransform{{{:2.18e}, {:2.18e}, {:2.18e}}}}}".format(SM['input_maps'][key].factor, SM['input_maps'][key].compressor, SM['input_maps'][key].original_min))
-        elif 'LogScaler' in str(SM['input_maps'][key]) and 'sym' not in str(SM['input_maps']):
+        elif 'LogScaler' in str(SM['input_maps'][key]) and 'Sym' not in str(SM['input_maps']):
             input_scalers.append("{{\"LOG10BOUNDED\", typename LAesStressUpdateBaseNewTempl<is_ad>::Log10Transform{{{:2.18e}, {:2.18e}, {:2.18e}, {:2.18e}, {:2.18e}}}}}".format(SM['input_maps'][key].factor, SM['input_maps'][key].b, SM['input_maps'][key].a, SM['input_maps'][key].logmin, SM['input_maps'][key].logmax))
         elif 'MinMax' in str(SM['input_maps'][key]):
             input_scalers.append("{{\"MINMAX\", typename LAesStressUpdateBaseNewTempl<is_ad>::MinMaxTransform{{{:2.18e}, {:2.18e}, {:2.18e}, {:2.18e}}}}}".format(SM['input_maps'][key].data_min_[0], SM['input_maps'][key].data_max_[0], SM['input_maps'][key].feature_range[0], SM['input_maps'][key].feature_range[1]))
@@ -1733,7 +1733,7 @@ def write_moose_C_4D_cached(SM: dict, name: str):
     for key in MOOSE_input_keys:
         if 'Compress' in str(SM['input_maps'][key]):
             input_scalers.append("{{\"COMPRESS\", typename LAROManceStressUpdateBaseUniversalTempl<is_ad>::CompressTransform{{{:2.18e}, {:2.18e}, {:2.18e}}}}}".format(SM['input_maps'][key].factor, SM['input_maps'][key].compressor, SM['input_maps'][key].original_min))
-        elif 'LogScaler' in str(SM['input_maps'][key]) and 'sym' not in str(SM['input_maps']):
+        elif 'LogScaler' in str(SM['input_maps'][key]) and 'Sym' not in str(SM['input_maps']):
             input_scalers.append("{{\"LOG10BOUNDED\", typename LAROManceStressUpdateBaseUniversalTempl<is_ad>::Log10Transform{{{:2.18e}, {:2.18e}, {:2.18e}, {:2.18e}, {:2.18e}}}}}".format(SM['input_maps'][key].factor, SM['input_maps'][key].b, SM['input_maps'][key].a, SM['input_maps'][key].logmin, SM['input_maps'][key].logmax))
         elif 'MinMax' in str(SM['input_maps'][key]):
             input_scalers.append("{{\"MINMAX\", typename LAROManceStressUpdateBaseUniversalTempl<is_ad>::MinMaxTransform{{{:2.18e}, {:2.18e}, {:2.18e}, {:2.18e}}}}}".format(SM['input_maps'][key].data_min_[0], SM['input_maps'][key].data_max_[0], SM['input_maps'][key].feature_range[0], SM['input_maps'][key].feature_range[1]))
@@ -2792,7 +2792,7 @@ def write_moose_C_cached_8D(SM: dict, name: str):
     for key in MOOSE_input_keys:
         if 'Compress' in str(SM['input_maps'][key]):
             input_scalers.append("{{\"COMPRESS\", typename LAROManceStressUpdateBaseUniversalTempl<is_ad>::CompressTransform{{{:2.18e}, {:2.18e}, {:2.18e}}}}}".format(SM['input_maps'][key].factor, SM['input_maps'][key].compressor, SM['input_maps'][key].original_min))
-        elif 'LogScaler' in str(SM['input_maps'][key]) and 'sym' not in str(SM['input_maps']):
+        elif 'LogScaler' in str(SM['input_maps'][key]) and 'Sym' not in str(SM['input_maps']):
             input_scalers.append("{{\"LOG10BOUNDED\", typename LAROManceStressUpdateBaseUniversalTempl<is_ad>::Log10Transform{{{:2.18e}, {:2.18e}, {:2.18e}, {:2.18e}, {:2.18e}}}}}".format(SM['input_maps'][key].factor, SM['input_maps'][key].b, SM['input_maps'][key].a, SM['input_maps'][key].logmin, SM['input_maps'][key].logmax))
         elif 'MinMax' in str(SM['input_maps'][key]):
             input_scalers.append("{{\"MINMAX\", typename LAROManceStressUpdateBaseUniversalTempl<is_ad>::MinMaxTransform{{{:2.18e}, {:2.18e}, {:2.18e}, {:2.18e}}}}}".format(SM['input_maps'][key].data_min_[0], SM['input_maps'][key].data_max_[0], SM['input_maps'][key].feature_range[0], SM['input_maps'][key].feature_range[1]))
@@ -3120,7 +3120,7 @@ def write_moose_6d_C(SM: dict, name: str):
     for key in MOOSE_input_keys:
         if 'Compress' in str(SM['input_maps'][key]):
             input_scalers.append("{{\"COMPRESS\", typename LAesStressUpdateBaseNewTempl<is_ad>::CompressTransform{{{:2.18e}, {:2.18e}, {:2.18e}}}}}".format(SM['input_maps'][key].factor, SM['input_maps'][key].compressor, SM['input_maps'][key].original_min))
-        elif 'LogScaler' in str(SM['input_maps'][key]) and 'sym' not in str(SM['input_maps']):
+        elif 'LogScaler' in str(SM['input_maps'][key]) and 'Sym' not in str(SM['input_maps']):
             input_scalers.append("{{\"LOG10BOUNDED\", typename LAesStressUpdateBaseNewTempl<is_ad>::Log10Transform{{{:2.18e}, {:2.18e}, {:2.18e}, {:2.18e}, {:2.18e}}}}}".format(SM['input_maps'][key].factor, SM['input_maps'][key].b, SM['input_maps'][key].a, SM['input_maps'][key].logmin, SM['input_maps'][key].logmax))
         elif 'MinMax' in str(SM['input_maps'][key]):
             input_scalers.append("{{\"MINMAX\", typename LAesStressUpdateBaseNewTempl<is_ad>::MinMaxTransform{{{:2.18e}, {:2.18e}, {:2.18e}, {:2.18e}}}}}".format(SM['input_maps'][key].data_min_[0], SM['input_maps'][key].data_max_[0], SM['input_maps'][key].feature_range[0], SM['input_maps'][key].feature_range[1]))
