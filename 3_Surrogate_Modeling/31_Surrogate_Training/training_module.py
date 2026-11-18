@@ -60,7 +60,7 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
     def __init__(self):
         super().__init__()
         smp.darktheme(True)
-        self.setWindowTitle("Surrogate Model Builder")
+        self.setWindowTitle("LAROMance 2.0 Training Module")
         self.setGeometry(100, 100, 1600, 900)
 
         # Apply modern dark theme stylesheet
@@ -91,6 +91,13 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
         self.pca_canvas = None  
         self.ts_canvas = None  
 
+        # Default parameters for each scaler type (used when user never opens the ⚙ dialog)
+        self.SCALER_DEFAULTS = {
+            "minmax":  {"range": (-1.0, 1.0)},
+            "log10":   {"factor": None, "lowerbound": 0.0, "upperbound": 1.0},
+            "symlog":  {"lowerbound": 0.0, "upperbound": 1.0},
+            "compress":{"factor": 1e-10, "compressor": 0.01},
+        }
 
         self.setup_panel = QtWidgets.QWidget()
         self.setup_layout = QtWidgets.QVBoxLayout(self.setup_panel)
@@ -1196,6 +1203,17 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
                 elif len(arr) >= 2:
                     self.roi[key] = [float(arr[0]), float(arr[1])]
             # Anything else – leave unchanged
+
+    def _get_scaler_config(self, var_name, scaler_type, is_input):
+        """Return a non-empty config dict for the given scaler.
+        If the user never opened the settings dialog, inject the defaults."""
+        map_key = "map_input" if is_input else "map_output"
+        existing = (self.args.get(map_key, {})
+                            .get(var_name, {})
+                            .get(scaler_type, {}))
+        if not existing:
+            existing = self.SCALER_DEFAULTS.get(scaler_type, {}).copy()
+        return existing
 
     def load_state(self):
         try:
@@ -3459,13 +3477,21 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
         refinement_configs = self.mesh_specs.get("refinement_configs") if hasattr(self, "mesh_specs") else None
 
         # Prepare map_input dict based on UI selections, preserve existing config if any
+        # map_input = {}
+        # for cb, _, _, _, map_dropdown, scaler_btn in self.input_var_widgets:
+        #     key = cb.currentText()
+        #     if key:
+        #         selected_scaler = map_dropdown.currentText()
+        #         existing_config = self.args.get("map_input", {}).get(key, {}).get(selected_scaler, {}) if hasattr(self, "args") else {}
+        #         map_input[key] = {selected_scaler: existing_config}
+        # Prepare map_input dict based on UI selections, guarantee defaults exist
         map_input = {}
         for cb, _, _, _, map_dropdown, scaler_btn in self.input_var_widgets:
             key = cb.currentText()
             if key:
                 selected_scaler = map_dropdown.currentText()
-                existing_config = self.args.get("map_input", {}).get(key, {}).get(selected_scaler, {}) if hasattr(self, "args") else {}
-                map_input[key] = {selected_scaler: existing_config}
+                cfg = self._get_scaler_config(key, selected_scaler, is_input=True)
+                map_input[key] = {selected_scaler: cfg}
 
         # Re-order map_input to match the mesh ordering:
         # first the two Plot-selected base dimensions, then the remaining stack dimensions
@@ -3498,15 +3524,19 @@ class SurrogateModelApp(QtWidgets.QMainWindow):
             if not key:
                 continue
 
-            # --- map_output ---
+            # # --- map_output ---
+            # selected_scaler = map_dropdown.currentText()
+            # existing_config = (
+            #     self.args.get("map_output", {}).get(key, {}).get(selected_scaler, {})
+            #     if hasattr(self, "args")
+            #     else {}
+            # )
+            # map_output[key] = {selected_scaler: existing_config}
+                        # --- map_output ---
             selected_scaler = map_dropdown.currentText()
-            existing_config = (
-                self.args.get("map_output", {}).get(key, {}).get(selected_scaler, {})
-                if hasattr(self, "args")
-                else {}
-            )
-            map_output[key] = {selected_scaler: existing_config}
-
+            cfg = self._get_scaler_config(key, selected_scaler, is_input=False)
+            map_output[key] = {selected_scaler: cfg}
+            
             # Ensure minmax has default range
             if "minmax" in map_output[key]:
                 if (
