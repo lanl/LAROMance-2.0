@@ -242,7 +242,7 @@ def eval_shape_mixed_point(point_dict, node_coords, mesh_specs, debug=False):
                     (1 - local[:, d]) if c == 0 else local[:, d]
                     for d, c in enumerate(corner) if d != k
                 ]
-                prod_other = np.prod(other, axis=0) if other else np.ones_like(local[:, 0])
+                prod_other = np.prod(other) if other else 1.0
                 dshape_hyper[dim, col_idx] = sign * prod_other
                 
     else:
